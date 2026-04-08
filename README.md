@@ -1,6 +1,6 @@
-# 版权管理系统
+# SMPH外版图书管理系统
 
-一个基于 Flask + Vue.js 的出版社版权管理系统。
+一个基于 Flask + Vue.js 的出版社外版图书版权管理系统。
 
 ## 功能模块
 
@@ -38,7 +38,7 @@
 ## 项目结构
 
 ```
-copyright-manager/
+smph-book-manager/
 ├── app.py              # Flask 后端主文件
 ├── database.py         # 数据库操作模块
 ├── requirements.txt    # Python 依赖
@@ -46,7 +46,8 @@ copyright-manager/
 ├── static/
 │   ├── index.html      # 主页面
 │   ├── css/style.css   # 样式文件
-│   └── js/app.js       # 前端逻辑
+│   ├── js/app.js       # 前端逻辑
+│   └── logo.png        # 系统Logo
 └── uploads/            # 上传文件目录 (自动创建)
 ```
 
@@ -72,28 +73,28 @@ python app.py
 pip3 install -r requirements.txt
 
 # 2. 使用 systemd 托管（推荐）
-# 创建服务文件 /etc/systemd/system/copyright-manager.service
+# 创建服务文件 /etc/systemd/system/smph-book-manager.service
 # 内容见下方"生产环境配置"
 
 # 3. 启动服务
-sudo systemctl start copyright-manager
-sudo systemctl enable copyright-manager  # 开机自启
+sudo systemctl start smph-book-manager
+sudo systemctl enable smph-book-manager  # 开机自启
 ```
 
 ### 生产环境配置
 
-创建 `/etc/systemd/system/copyright-manager.service`：
+创建 `/etc/systemd/system/smph-book-manager.service`：
 
 ```ini
 [Unit]
-Description=Copyright Manager System
+Description=SMPH Foreign Book Management System
 After=network.target
 
 [Service]
 Type=simple
 User=www-data
-WorkingDirectory=/path/to/copyright-manager
-ExecStart=/usr/bin/python3 /path/to/copyright-manager/app.py
+WorkingDirectory=/path/to/smph-book-manager
+ExecStart=/usr/bin/python3 /path/to/smph-book-manager/app.py
 Restart=always
 RestartSec=5
 
@@ -103,7 +104,7 @@ WantedBy=multi-user.target
 
 ## 数据库
 
-- 使用 SQLite 数据库，文件 `copyright_manager.db` 首次运行自动创建
+- 使用 SQLite 数据库，文件 `smph-book-manager.db` 首次运行自动创建
 - **重要**：更新代码时请保留此文件，否则数据会丢失
 - **备份建议**：定期备份 `.db` 文件和 `uploads/` 文件夹
 
@@ -150,7 +151,7 @@ WantedBy=multi-user.target
 git pull
 
 # 重启服务
-sudo systemctl restart copyright-manager
+sudo systemctl restart smph-book-manager
 
 # 注意：不要删除 .db 文件和 uploads/ 文件夹
 ```
