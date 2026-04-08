@@ -282,5 +282,95 @@ def get_statistics():
     conn.close()
     return stats
 
+def get_reminders():
+    """获取所有待提醒项目"""
+    from datetime import datetime, timedelta
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    reminders = []
+    today = datetime.now()
+    today_str = today.strftime('%Y-%m-%d')
+    thirty_days_later = (today + timedelta(days=30)).strftime('%Y-%m-%d')
+    ninety_days_ago = (today - timedelta(days=90)).strftime('%Y-%m-%d')
+    sixty_days_ago = (today - timedelta(days=60)).strftime('%Y-%m-%d')
+    
+    # 1. 合同到期提醒（30天内到期的执行中合同）
+    cursor.execute('''
+        SELECT id, contract_name, end_date, foreign_publisher_name,
+               (julianday(end_date) - julianday(?)) as days_left
+        FROM contracts c
+        LEFT JOIN foreign_publishers fp ON c.foreign_publisher_id = fp.id
+        WHERE end_date IS NOT NULL 
+          AND end_date != ''
+          AND contract_status = '执行中'
+          AND end_date >= ?
+          AND end_date <= ?
+        ORDER BY end_date ASC
+    ''', (today_str, today_str, thirty_days_later))
+    
+    for row in cursor.fetchall():
+        reminders.append({
+            'type': 'contract_expiring',
+            'title': f'合同即将到期：{row["contract_name"]}',
+            'description': f'剩余 {int(row["days_left"])} 天到期',
+            'detail': f'外方出版社：{row["foreign_publisher_name"] or "未指定"}',
+            'date': row["end_date"],
+            'days_left': int(row["days_left"]),
+            'priority': 'warning' if int(row["days_left"]) <= 7 else 'normal',
+            'record_id': row['id'],
+            'module': 'contracts'
+        })
+    
+    # 2. 意向选题超时提醒 - 紧急（超过90天未洽谈）
+    cursor.execute('''
+        SELECT id, chinese_publisher_name, author_name, intention_date,
+               (julianday(?) - julianday(intention_date)) as days_passed
+        FROM topic_ideas
+        WHERE intention_status = '待洽谈'
+          AND intention_date <= ?
+        ORDER BY days_passed DESC
+    ''', (today_str, ninety_days_ago))
+    
+    for row in cursor.fetchall():
+        reminders.append({
+            'type': 'topic_urgent',
+            'title': f'选题洽谈紧急：{row["chinese_publisher_name"]}',
+            'description': f'已等待 {int(row["days_passed"])} 天',
+            'detail': f'作者：{row["author_name"]}',
+            'date': row["intention_date"],
+            'days_passed': int(row["days_passed"]),
+            'priority': 'urgent',
+            'record_id': row['id'],
+            'module': 'topicIdeas'
+        })
+    
+    # 3. 意向选题超时提醒 - 初级（超过30天但不超过90天）
+    cursor.execute('''
+        SELECT id, chinese_publisher_name, author_name, intention_date,
+               (julianday(?) - julianday(intention_date)) as days_passed
+        FROM topic_ideas
+        WHERE intention_status = '待洽谈'
+          AND intention_date > ?
+          AND intention_date <= ?
+        ORDER BY days_passed DESC
+    ''', (today_str, ninety_days_ago, sixty_days_ago))
+    
+    for row in cursor.fetchall():
+        reminders.append({
+            'type': 'topic_warning',
+            'title': f'选题待洽谈提醒：{row["chinese_publisher_name"]}',
+            'description': f'已等待 {int(row["days_passed"])} 天',
+            'detail': f'作者：{row["author_name"]}',
+            'date': row["intention_date"],
+            'days_passed': int(row["days_passed"]),
+            'priority': 'warning',
+            'record_id': row['id'],
+            'module': 'topicIdeas'
+        })
+    
+    conn.close()
+    return reminders
+
 if __name__ == '__main__':
     init_db()

@@ -88,6 +88,33 @@
                             <div class="stat-value">{{ statistics.total_royalties }}</div>
                             <div class="stat-label">版税记录</div>
                         </div>
+                        <div class="stat-card reminder-card" :class="{'has-reminders': reminderCounts.total > 0}">
+                            <div class="stat-icon">🔔</div>
+                            <div class="stat-value">{{ reminderCounts.total || 0 }}</div>
+                            <div class="stat-label">待办提醒</div>
+                        </div>
+                    </div>
+
+                    <!-- 提醒列表 -->
+                    <div v-if="reminders.length > 0" class="reminder-section">
+                        <h3 class="section-title">提醒列表</h3>
+                        <div class="reminder-list">
+                            <div v-for="reminder in reminders" :key="reminder.type + reminder.record_id" 
+                                 class="reminder-item" 
+                                 :class="'priority-' + reminder.priority"
+                                 @click="goToReminder(reminder)">
+                                <div class="reminder-icon">
+                                    <span v-if="reminder.type === 'contract_expiring'">📄</span>
+                                    <span v-else-if="reminder.type === 'topic_urgent'">🚨</span>
+                                    <span v-else>⏰</span>
+                                </div>
+                                <div class="reminder-content">
+                                    <div class="reminder-title">{{ reminder.title }}</div>
+                                    <div class="reminder-desc">{{ reminder.description }} - {{ reminder.detail }}</div>
+                                </div>
+                                <div class="reminder-action">查看 →</div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="chart-grid">
@@ -127,6 +154,7 @@
                                     <th>参考定价</th>
                                     <th>当前状态</th>
                                     <th>更新时间</th>
+                                    <th>样书文件</th>
                                     <th>操作</th>
                                 </tr>
                             </thead>
@@ -138,6 +166,15 @@
                                     <td>{{ book.reference_price }}</td>
                                     <td><span :class="'status-tag ' + getStatusClass(book.book_status)">{{ book.book_status }}</span></td>
                                     <td>{{ formatDate(book.updated_at) }}</td>
+                                    <td>
+                                        <div class="file-cell">
+                                            <a v-if="book.editor_sample_file" :href="'/uploads/' + book.editor_sample_file" target="_blank" class="file-link">📄样书</a>
+                                            <label class="btn btn-default btn-sm file-upload-btn">
+                                                <input type="file" @change="uploadBookFile(book.id, $event)" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" style="display:none;">
+                                                上传
+                                            </label>
+                                        </div>
+                                    </td>
                                     <td>
                                         <div class="action-buttons">
                                             <button class="btn btn-default btn-sm" @click="viewDetail('book', book.id)">查看</button>
@@ -175,6 +212,7 @@
                                     <th>版税类型</th>
                                     <th>合同状态</th>
                                     <th>签订日期</th>
+                                    <th>合同文件</th>
                                     <th>操作</th>
                                 </tr>
                             </thead>
@@ -187,6 +225,15 @@
                                     <td>{{ contract.royalty_type }}</td>
                                     <td><span :class="'status-tag ' + getContractStatusClass(contract.contract_status)">{{ contract.contract_status }}</span></td>
                                     <td>{{ contract.sign_date }}</td>
+                                    <td>
+                                        <div class="file-cell">
+                                            <a v-if="contract.contract_file" :href="'/uploads/' + contract.contract_file" target="_blank" class="file-link">📎 已上传</a>
+                                            <label class="btn btn-default btn-sm file-upload-btn">
+                                                <input type="file" @change="uploadContractFile(contract.id, $event)" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" style="display:none;">
+                                                上传合同
+                                            </label>
+                                        </div>
+                                    </td>
                                     <td>
                                         <div class="action-buttons">
                                             <button class="btn btn-default btn-sm" @click="viewDetail('contract', contract.id)">查看</button>
@@ -271,6 +318,7 @@
                                     <th>分级</th>
                                     <th>报价(元/千字)</th>
                                     <th>联系方式</th>
+                                    <th>简历/合同</th>
                                     <th>操作</th>
                                 </tr>
                             </thead>
@@ -283,6 +331,16 @@
                                     <td>{{ translator.level || '-' }}</td>
                                     <td>{{ translator.rate_per_thousand || '-' }}</td>
                                     <td>{{ translator.contact_info || '-' }}</td>
+                                    <td>
+                                        <div class="file-cell">
+                                            <a v-if="translator.resume_file" :href="'/uploads/' + translator.resume_file" target="_blank" class="file-link">📄简历</a>
+                                            <a v-if="translator.contract_file" :href="'/uploads/' + translator.contract_file" target="_blank" class="file-link">📋合同</a>
+                                            <label class="btn btn-default btn-sm file-upload-btn">
+                                                <input type="file" @change="uploadTranslatorFile(translator.id, $event)" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" style="display:none;">
+                                                上传
+                                            </label>
+                                        </div>
+                                    </td>
                                     <td>
                                         <div class="action-buttons">
                                             <button class="btn btn-default btn-sm" @click="viewDetail('translator', translator.id)">查看</button>

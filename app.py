@@ -10,15 +10,24 @@ import uuid
 from datetime import datetime
 from database import (
     init_db, create_record, get_records, get_record_by_id,
-    update_record, delete_record, count_records, get_statistics
+    update_record, delete_record, count_records, get_statistics, get_reminders
 )
 
 app = Flask(__name__, static_folder='static')
 CORS(app)
 
-# 上传文件目录
+# 上传文件目录和配置
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# 允许的文件类型
+ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'doc', 'docx'}
+# 文件大小限制：10MB
+MAX_FILE_SIZE = 10 * 1024 * 1024
+
+def allowed_file(filename):
+    """检查文件类型是否允许"""
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route('/')
 def index():
@@ -41,6 +50,23 @@ def statistics():
     try:
         stats = get_statistics()
         return jsonify({'success': True, 'data': stats})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+# ==================== 提醒接口 ====================
+@app.route('/api/reminders', methods=['GET'])
+def get_all_reminders():
+    """获取所有待提醒项目"""
+    try:
+        reminders = get_reminders()
+        # 统计各类提醒数量
+        counts = {
+            'total': len(reminders),
+            'contract_expiring': len([r for r in reminders if r['type'] == 'contract_expiring']),
+            'topic_urgent': len([r for r in reminders if r['type'] == 'topic_urgent']),
+            'topic_warning': len([r for r in reminders if r['type'] == 'topic_warning'])
+        }
+        return jsonify({'success': True, 'data': reminders, 'counts': counts})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
@@ -398,13 +424,26 @@ def upload_file():
         if file.filename == '':
             return jsonify({'success': False, 'error': '文件名为空'})
         
+        # 检查文件类型
+        if not allowed_file(file.filename):
+            return jsonify({'success': False, 'error': '不支持的文件类型，仅支持：PDF、图片(PNG/JPG)、Word文档'})
+        
+        # 检查文件大小
+        file.seek(0, 2)
+        file_size = file.tell()
+        file.seek(0)
+        if file_size > MAX_FILE_SIZE:
+            return jsonify({'success': False, 'error': '文件大小超过10MB限制'})
+        
         # 生成唯一文件名
         ext = os.path.splitext(file.filename)[1]
         filename = f"{uuid.uuid4().hex}{ext}"
         filepath = os.path.join(UPLOAD_FOLDER, filename)
         file.save(filepath)
         
-        return jsonify({'success': True, 'filename': filename})
+        # 返回文件路径
+        file_url = f"/uploads/{filename}"
+        return jsonify({'success': True, 'filename': filename, 'url': file_url})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 

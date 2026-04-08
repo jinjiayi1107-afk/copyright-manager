@@ -623,3 +623,127 @@ select.form-input {
     flex: 1;
     color: var(--text-color);
 }
+
+
+/* 提醒卡片样式 */
+.reminder-card {
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.reminder-card.has-reminders {
+    background: linear-gradient(135deg, #fffbe6 0%, #fff1f0 100%);
+    border: 1px solid #ffc53d;
+}
+
+.reminder-card.has-reminders .stat-icon {
+    animation: bell-shake 1s ease-in-out infinite;
+}
+
+@keyframes bell-shake {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(10deg); }
+    75% { transform: rotate(-10deg); }
+}
+
+/* 提醒列表样式 */
+.reminder-section {
+    background: var(--card-bg);
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+    margin-bottom: 24px;
+}
+
+.section-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--text-color);
+}
+
+.reminder-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.reminder-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    border-radius: 8px;
+    background: #fafafa;
+    cursor: pointer;
+    transition: all 0.3s;
+    border-left: 4px solid transparent;
+}
+
+.reminder-item:hover {
+    background: #f0f0f0;
+    transform: translateX(4px);
+}
+
+.reminder-item.priority-normal {
+    border-left-color: var(--primary-color);
+}
+
+.reminder-item.priority-warning {
+    border-left-color: var(--warning-color);
+    background: #fffbe6;
+}
+
+.reminder-item.priority-urgent {
+    border-left-color: var(--error-color);
+    background: #fff1f0;
+}
+
+.reminder-icon {
+    font-size: 24px;
+    margin-right: 12px;
+}
+
+.reminder-content {
+    flex: 1;
+}
+
+.reminder-title {
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 4px;
+}
+
+.reminder-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.reminder-action {
+    color: var(--primary-color);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+/* 文件上传单元格样式 */
+.file-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.file-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.file-link:hover {
+    text-decoration: underline;
+}
+
+.file-upload-btn {
+    cursor: pointer;
+}

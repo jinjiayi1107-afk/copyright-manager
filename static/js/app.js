@@ -23,6 +23,10 @@ createApp({
             topic_ideas_by_status: {}
         });
         
+        // 提醒数据
+        const reminders = ref([]);
+        const reminderCounts = ref({ total: 0, contract_expiring: 0, topic_urgent: 0, topic_warning: 0 });
+        
         // 数据列表
         const books = ref([]);
         const contracts = ref([]);
@@ -225,6 +229,18 @@ createApp({
             }
         }
         
+        async function loadReminders() {
+            try {
+                const res = await api.get('/reminders');
+                if (res.success) {
+                    reminders.value = res.data;
+                    reminderCounts.value = res.counts;
+                }
+            } catch (e) {
+                console.error('加载提醒失败', e);
+            }
+        }
+        
         async function loadBooks() {
             try {
                 const res = await api.get('/books');
@@ -290,8 +306,9 @@ createApp({
         
         // 加载所有数据
         async function loadAllData() {
-            await loadStatistics();
             await Promise.all([
+                loadStatistics(),
+                loadReminders(),
                 loadBooks(),
                 loadContracts(),
                 loadForeignPublishers(),
@@ -518,6 +535,109 @@ createApp({
             // 搜索通过计算属性自动处理
         }
         
+        // 跳转到提醒对应的记录
+        function goToReminder(reminder) {
+            currentPage.value = reminder.module;
+            nextTick(() => {
+                if (reminder.record_id) {
+                    editRecord(reminder.module === 'topicIdeas' ? 'topicIdea' : reminder.module.slice(0, -1), reminder.record_id);
+                }
+            });
+        }
+        
+        // 文件上传函数
+        async function uploadContractFile(contractId, event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const res = await fetch(API_BASE + '/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    // 更新合同记录
+                    await api.put(`/contracts/${contractId}`, { contract_file: data.filename });
+                    showToastMessage('合同文件上传成功');
+                    // 刷新合同列表
+                    await loadContracts();
+                } else {
+                    showToastMessage(data.error || '上传失败', 'error');
+                }
+            } catch (e) {
+                showToastMessage('上传失败: ' + e.message, 'error');
+            }
+            event.target.value = '';
+        }
+        
+        async function uploadBookFile(bookId, event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const res = await fetch(API_BASE + '/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    // 更新图书记录
+                    await api.put(`/books/${bookId}`, { editor_sample_file: data.filename });
+                    showToastMessage('样书文件上传成功');
+                    // 刷新图书列表
+                    await loadBooks();
+                } else {
+                    showToastMessage(data.error || '上传失败', 'error');
+                }
+            } catch (e) {
+                showToastMessage('上传失败: ' + e.message, 'error');
+            }
+            event.target.value = '';
+        }
+        
+        async function uploadTranslatorFile(translatorId, event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const res = await fetch(API_BASE + '/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    // 判断是简历还是合同（根据是否有现有文件）
+                    const translator = translators.value.find(t => t.id === translatorId);
+                    const updateData = translator && translator.resume_file 
+                        ? { contract_file: data.filename } 
+                        : { resume_file: data.filename };
+                    // 更新译者记录
+                    await api.put(`/translators/${translatorId}`, updateData);
+                    showToastMessage('文件上传成功');
+                    // 刷新译者列表
+                    await loadTranslators();
+                } else {
+                    showToastMessage(data.error || '上传失败', 'error');
+                }
+            } catch (e) {
+                showToastMessage('上传失败: ' + e.message, 'error');
+            }
+            event.target.value = '';
+        }
+        
         // 监听页面切换
         watch(currentPage, () => {
             nextTick(() => {
@@ -540,6 +660,8 @@ createApp({
             currentPage,
             searchKeyword,
             statistics,
+            reminders,
+            reminderCounts,
             books,
             contracts,
             foreignPublishers,
@@ -582,7 +704,11 @@ createApp({
             deleteRecord,
             viewDetail,
             closeDetailModal,
-            searchBooks
+            searchBooks,
+            goToReminder,
+            uploadContractFile,
+            uploadBookFile,
+            uploadTranslatorFile
         };
     }
 }).mount('#app');
