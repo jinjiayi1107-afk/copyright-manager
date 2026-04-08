@@ -54,6 +54,13 @@ createApp({
         const editingId = ref(null);
         const formData = ref({});
         
+        // 阶梯版税档位数据
+        const tieredTiers = ref([
+            { min: 1, max: 5000, rate: '7' },
+            { min: 5001, max: 10000, rate: '8' },
+            { min: 10001, max: null, rate: '9' }
+        ]);
+        
         // 详情模态框
         const showDetailModal = ref(false);
         const detailData = ref(null);
@@ -404,6 +411,9 @@ createApp({
             editingId.value = null;
             formData.value = {};
             
+            // 初始化阶梯档位数据
+            initTieredTiers();
+            
             const titleMap = {
                 book: '新增图书档案',
                 contract: '新增合同',
@@ -421,6 +431,51 @@ createApp({
             modalType.value = '';
             editingId.value = null;
             formData.value = {};
+            // 重置阶梯档位数据
+            initTieredTiers();
+        }
+        
+        // 初始化阶梯版税档位数据
+        function initTieredTiers() {
+            tieredTiers.value = [
+                { min: 1, max: 5000, rate: '7' },
+                { min: 5001, max: 10000, rate: '8' },
+                { min: 10001, max: null, rate: '9' }
+            ];
+        }
+        
+        // 添加阶梯档位
+        function addTier() {
+            const lastTier = tieredTiers.value[tieredTiers.value.length - 1];
+            const newMin = lastTier ? (lastTier.max ? lastTier.max + 1 : lastTier.min + 1) : 1;
+            tieredTiers.value.push({
+                min: newMin,
+                max: null,
+                rate: ''
+            });
+        }
+        
+        // 删除阶梯档位
+        function deleteTier(index) {
+            if (tieredTiers.value.length > 1) {
+                tieredTiers.value.splice(index, 1);
+            }
+        }
+        
+        // 解析阶梯版税数据（从JSON字符串解析为数组）
+        function parseTieredRoyalty(jsonStr) {
+            if (!jsonStr) return null;
+            try {
+                return JSON.parse(jsonStr);
+            } catch (e) {
+                console.error('解析阶梯版税数据失败', e);
+                return null;
+            }
+        }
+        
+        // 序列化阶梯版税数据（从数组转为JSON字符串）
+        function serializeTieredRoyalty() {
+            return JSON.stringify(tieredTiers.value);
         }
         
         async function submitForm() {
@@ -436,10 +491,21 @@ createApp({
                 };
                 const endpoint = typeMap[modalType.value];
                 
+                // 准备提交数据
+                const submitData = { ...formData.value };
+                
+                // 如果是合同表单且选择阶梯版税率，序列化档位数据
+                if (modalType.value === 'contract' && formData.value.royalty_type === '阶梯版税率') {
+                    submitData.tiered_royalty = serializeTieredRoyalty();
+                    submitData.royalty_rate = ''; // 阶梯版税时清空统一版税率
+                } else if (modalType.value === 'contract' && formData.value.royalty_type === '统一版税率') {
+                    submitData.tiered_royalty = ''; // 统一版税时清空阶梯版税
+                }
+                
                 if (editingId.value) {
-                    res = await api.put(`${endpoint}/${editingId.value}`, formData.value);
+                    res = await api.put(`${endpoint}/${editingId.value}`, submitData);
                 } else {
-                    res = await api.post(endpoint, formData.value);
+                    res = await api.post(endpoint, submitData);
                 }
                 
                 if (res.success) {
@@ -472,6 +538,19 @@ createApp({
                 const res = await api.get(`${endpoint}/${id}`);
                 if (res.success) {
                     formData.value = { ...res.data };
+                    
+                    // 如果是合同表单且有阶梯版税数据，解析并加载
+                    if (type === 'contract' && res.data.tiered_royalty) {
+                        const parsedTiers = parseTieredRoyalty(res.data.tiered_royalty);
+                        if (parsedTiers && Array.isArray(parsedTiers) && parsedTiers.length > 0) {
+                            tieredTiers.value = parsedTiers;
+                        } else {
+                            initTieredTiers();
+                        }
+                    } else if (type === 'contract') {
+                        initTieredTiers();
+                    }
+                    
                     const titleMap = {
                         book: '编辑图书档案',
                         contract: '编辑合同',
@@ -678,6 +757,11 @@ createApp({
             formData,
             showDetailModal,
             detailData,
+            
+            // 阶梯版税
+            tieredTiers,
+            addTier,
+            deleteTier,
             
             // 消息
             showToast,

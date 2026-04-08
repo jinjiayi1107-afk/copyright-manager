@@ -569,16 +569,59 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="form-row">
+                            <!-- 统一版税率输入（版税类型为统一版税率时显示） -->
+                            <div class="form-row" v-if="formData.royalty_type === '统一版税率'">
                                 <div class="form-group">
                                     <label>版税率 (%)</label>
-                                    <input type="text" class="form-input" v-model="formData.royalty_rate">
+                                    <input type="text" class="form-input" v-model="formData.royalty_rate" placeholder="如：8">
                                 </div>
                                 <div class="form-group">
                                     <label>预付金</label>
                                     <input type="text" class="form-input" v-model="formData.advance_payment">
                                 </div>
                             </div>
+                            
+                            <!-- 阶梯版税率配置（版税类型为阶梯版税率时显示） -->
+                            <div v-if="formData.royalty_type === '阶梯版税率'" class="tiered-royalty-section">
+                                <div class="form-group">
+                                    <label>阶梯档位配置</label>
+                                    <div class="tiered-tiers">
+                                        <div v-for="(tier, index) in tieredTiers" :key="index" class="tier-row">
+                                            <div class="tier-header">
+                                                <span class="tier-label">第 {{ index + 1 }} 档</span>
+                                                <button v-if="tieredTiers.length > 1" type="button" class="btn btn-danger btn-sm" @click="deleteTier(index)">删除</button>
+                                            </div>
+                                            <div class="tier-fields">
+                                                <div class="tier-field">
+                                                    <label>起始册数</label>
+                                                    <input type="number" class="form-input" v-model.number="tier.min" min="1" placeholder="1">
+                                                </div>
+                                                <div class="tier-field">
+                                                    <label>结束册数</label>
+                                                    <input type="number" class="form-input" v-model="tier.max" min="1" placeholder="以上请留空">
+                                                    <span class="field-hint">最后档位可留空，表示"及以上"</span>
+                                                </div>
+                                                <div class="tier-field">
+                                                    <label>版税率 (%)</label>
+                                                    <input type="text" class="form-input" v-model="tier.rate" placeholder="如：8">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn btn-default" @click="addTier">
+                                        <span>+</span> 添加档位
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- 预付金（在阶梯版税时也显示） -->
+                            <div class="form-row" v-if="formData.royalty_type === '阶梯版税率'">
+                                <div class="form-group">
+                                    <label>预付金</label>
+                                    <input type="text" class="form-input" v-model="formData.advance_payment">
+                                </div>
+                            </div>
+                            
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>合同状态</label>

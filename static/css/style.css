@@ -747,3 +747,87 @@ select.form-input {
 .file-upload-btn {
     cursor: pointer;
 }
+
+/* 阶梯版税配置样式 */
+.tiered-royalty-section {
+    background: #fafafa;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.tiered-royalty-section .form-group label {
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 12px;
+}
+
+.tiered-tiers {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.tier-row {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 12px;
+}
+
+.tier-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed var(--border-color);
+}
+
+.tier-label {
+    font-weight: 600;
+    color: var(--primary-color);
+    font-size: 14px;
+}
+
+.tier-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+}
+
+.tier-field {
+    display: flex;
+    flex-direction: column;
+}
+
+.tier-field label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+
+.tier-field .field-hint {
+    font-size: 11px;
+    color: #999;
+    margin-top: 4px;
+}
+
+/* 阶梯档位之间的分隔线 */
+.tier-row:not(:last-child) {
+    border-bottom: 2px solid #e6f7ff;
+}
+
+/* 阶梯版税配置按钮样式 */
+.tiered-royalty-section .btn-default {
+    margin-top: 8px;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .tier-fields {
+        grid-template-columns: 1fr;
+    }
+}
