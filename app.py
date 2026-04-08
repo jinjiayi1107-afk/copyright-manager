@@ -430,11 +430,12 @@ def get_enums():
     return jsonify({'success': True, 'data': enums})
 
 if __name__ == '__main__':
+    import os
+    port = int(os.environ.get('PORT', 5001))
     print("=" * 50)
     print("版权管理系统启动中...")
     print("=" * 50)
     init_db()
-    print("\n请访问: http://localhost:5000")
-    print("按 Ctrl+C 停止服务")
+    print(f"\n服务运行在端口: {port}")
     print("=" * 50)
-    app.run(host='0.0.0.0', port=5001, debug=False)
+    app.run(host='0.0.0.0', port=port, debug=False)
