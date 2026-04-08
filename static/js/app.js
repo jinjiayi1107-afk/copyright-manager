@@ -91,7 +91,8 @@ createApp({
             const keyword = bookSearchKeyword.value.toLowerCase();
             return books.value.filter(book => 
                 (book.publisher_name && book.publisher_name.toLowerCase().includes(keyword)) ||
-                (book.contract_name && book.contract_name.toLowerCase().includes(keyword)) ||
+                (book.original_title && book.original_title.toLowerCase().includes(keyword)) ||
+                (book.chinese_title && book.chinese_title.toLowerCase().includes(keyword)) ||
                 (book.publisher_country && book.publisher_country.toLowerCase().includes(keyword))
             );
         });
@@ -123,6 +124,23 @@ createApp({
                 (translator.languages && translator.languages.toLowerCase().includes(keyword))
             );
         });
+        
+        // 用于图书表单中的译者下拉选择（带搜索过滤）
+        const filteredTranslatorsForSelect = computed(() => {
+            if (!translatorSearchKeyword.value) return translators.value;
+            const keyword = translatorSearchKeyword.value.toLowerCase();
+            return translators.value.filter(translator => 
+                (translator.name && translator.name.toLowerCase().includes(keyword)) ||
+                (translator.languages && translator.languages.toLowerCase().includes(keyword))
+            );
+        });
+        
+        // 获取合同名称
+        function getContractName(contractId) {
+            if (!contractId) return '-';
+            const contract = contracts.value.find(c => c.id === contractId);
+            return contract ? contract.contract_name : '-';
+        }
         
         // API基础路径
         const API_BASE = '/api';
@@ -172,6 +190,49 @@ createApp({
             return date.toLocaleDateString('zh-CN');
         }
         
+        // 格式化日期时间（用于详情弹窗）
+        function formatDateTime(dateStr) {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            return date.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+        
+        // 获取当前查看详情的数据类型（用于ID格式化）
+        function getRecordType() {
+            if (!detailData.value) return 'ID';
+            // 根据detailData中的字段判断数据类型
+            if ('original_title' in detailData.value || 'publisher_name' in detailData.value) return 'books';
+            if ('contract_name' in detailData.value) return 'contracts';
+            if ('name' in detailData.value && 'languages' in detailData.value) return 'translators';
+            if ('original_name' in detailData.value && 'country' in detailData.value) return 'foreignPublishers';
+            if ('original_publisher_name' in detailData.value || 'author_name' in detailData.value) return 'topicIdeas';
+            if ('royalty_type' in detailData.value) return 'royalties';
+            return 'ID';
+        }
+        
+        // 格式化ID - 添加前缀
+        function formatId(type, id) {
+            const prefixes = {
+                'books': 'Book',
+                'contracts': 'Contract',
+                'translators': 'Translator',
+                'publishers': 'Publisher',
+                'foreignPublishers': 'Publisher',
+                'topic_ideas': 'Topic',
+                'topicIdeas': 'Topic',
+                'royalties': 'Royalty'
+            };
+            const prefix = prefixes[type] || 'ID';
+            return `${prefix}_${String(id).padStart(4, '0')}`;
+        }
+        
         // 格式化字段名
         function formatFieldName(key) {
             const nameMap = {
@@ -180,6 +241,8 @@ createApp({
                 
                 // 外版图书档案字段
                 contract_id: '关联合同',
+                original_title: '原文名',
+                chinese_title: '中文名',
                 publisher_name: '出版社名称',
                 publisher_country: '出版社国家',
                 book_number: '图字号',
@@ -491,6 +554,11 @@ createApp({
             modalType.value = type;
             editingId.value = null;
             formData.value = {};
+            
+            // 打开图书模态框时清空译者搜索关键字
+            if (type === 'book') {
+                translatorSearchKeyword.value = '';
+            }
             
             // 初始化阶梯档位数据
             initTieredTiers();
@@ -951,9 +1019,14 @@ createApp({
             filteredContracts,
             filteredPublishers,
             filteredTranslators,
+            filteredTranslatorsForSelect,
+            getContractName,
             
             // 方法
             formatDate,
+            formatId,
+            formatDateTime,
+            getRecordType,
             formatFieldName,
             getStatusClass,
             getContractStatusClass,

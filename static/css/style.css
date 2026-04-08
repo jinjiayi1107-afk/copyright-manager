@@ -1033,3 +1033,24 @@ select.form-input {
     background: var(--primary-color);
     border-radius: 3px;
 }
+/* 可搜索下拉选择器样式 */
+.searchable-select {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.searchable-select input[type="text"] {
+    margin-bottom: 4px;
+}
+
+.searchable-select select {
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+/* 详情弹窗中的ID显示样式 */
+.detail-section .detail-row:first-child .detail-value {
+    font-weight: 600;
+    color: var(--primary-color);
+}

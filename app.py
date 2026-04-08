@@ -257,13 +257,15 @@ def create_book():
     try:
         data = request.json
         if 'contract_id' not in data or not data['contract_id']:
-            return jsonify({'success': False, 'error': '缺少必填字段: 合同ID'})
+            return jsonify({'success': False, 'error': '缺少必填字段: 关联合同'})
+        if 'original_title' not in data or not data['original_title']:
+            return jsonify({'success': False, 'error': '缺少必填字段: 原文名'})
+        if 'chinese_title' not in data or not data['chinese_title']:
+            return jsonify({'success': False, 'error': '缺少必填字段: 中文名'})
         if 'publisher_name' not in data or not data['publisher_name']:
             return jsonify({'success': False, 'error': '缺少必填字段: 出版社名称'})
         if 'publisher_country' not in data or not data['publisher_country']:
             return jsonify({'success': False, 'error': '缺少必填字段: 出版社国家'})
-        if 'contract_name' not in data or not data['contract_name']:
-            return jsonify({'success': False, 'error': '缺少必填字段: 合同名称'})
         if 'reference_price' not in data or not data['reference_price']:
             return jsonify({'success': False, 'error': '缺少必填字段: 参考定价'})
         

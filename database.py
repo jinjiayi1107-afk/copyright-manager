@@ -120,9 +120,10 @@ def init_db():
         CREATE TABLE IF NOT EXISTS books (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             contract_id INTEGER NOT NULL,
+            original_title TEXT NOT NULL,
+            chinese_title TEXT NOT NULL,
             publisher_name TEXT NOT NULL,
             publisher_country TEXT NOT NULL,
-            contract_name TEXT NOT NULL,
             translator_id INTEGER,
             translator_languages TEXT,
             book_number TEXT,
@@ -372,5 +373,34 @@ def get_reminders():
     conn.close()
     return reminders
 
+def migrate_db():
+    """数据库迁移 - 处理已有数据的兼容性问题"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # 检查books表是否有contract_name字段
+    cursor.execute("PRAGMA table_info(books)")
+    columns = [col[1] for col in cursor.fetchall()]
+    
+    # 如果有contract_name字段，删除它
+    if 'contract_name' in columns:
+        cursor.execute("ALTER TABLE books DROP COLUMN contract_name")
+        print("已删除 books 表中的 contract_name 字段")
+    
+    # 如果没有original_title字段，添加它
+    if 'original_title' not in columns:
+        cursor.execute("ALTER TABLE books ADD COLUMN original_title TEXT NOT NULL DEFAULT ''")
+        print("已添加 books 表中的 original_title 字段")
+    
+    # 如果没有chinese_title字段，添加它
+    if 'chinese_title' not in columns:
+        cursor.execute("ALTER TABLE books ADD COLUMN chinese_title TEXT NOT NULL DEFAULT ''")
+        print("已添加 books 表中的 chinese_title 字段")
+    
+    conn.commit()
+    conn.close()
+    print("数据库迁移完成！")
+
 if __name__ == '__main__':
     init_db()
+    migrate_db()
