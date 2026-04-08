@@ -184,7 +184,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="book in filteredBooks" :key="book.id">
+                                <tr v-for="book in filteredBooks" :key="book.id" @dblclick="toggleRowDetail('book', book)">
                                     <td>{{ formatId('books', book.id) }}</td>
                                     <td>{{ book.original_title }}</td>
                                     <td>{{ book.chinese_title }}</td>
@@ -205,9 +205,29 @@
                                     </td>
                                     <td>
                                         <div class="action-buttons">
-                                            <button class="btn btn-default btn-sm" @click="viewDetail('book', book.id)">查看</button>
-                                            <button class="btn btn-default btn-sm" @click="editRecord('book', book.id)">编辑</button>
-                                            <button class="btn btn-danger btn-sm" @click="deleteRecord('books', book.id)">删除</button>
+                                            <button class="btn btn-default btn-sm" @click.stop="editRecord('book', book.id)">编辑</button>
+                                            <button class="btn btn-danger btn-sm" @click.stop="deleteRecord('books', book.id)">删除</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <!-- 详情展开行 -->
+                                <tr v-if="expandedRowId === 'book_' + book.id" class="detail-expand-row">
+                                    <td colspan="10">
+                                        <div class="detail-expand">
+                                            <div class="detail-expand-header">📋 图书档案详情</div>
+                                            <div class="detail-expand-grid">
+                                                <div class="detail-item"><span class="detail-label">编号：</span><span class="detail-value">{{ formatId('books', book.id) }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">原文名：</span><span class="detail-value">{{ book.original_title || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">中文名：</span><span class="detail-value">{{ book.chinese_title || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">出版社：</span><span class="detail-value">{{ book.publisher_name || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">国家：</span><span class="detail-value">{{ book.publisher_country || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">关联合同：</span><span class="detail-value">{{ getContractName(book.contract_id) }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">参考定价：</span><span class="detail-value">{{ book.reference_price || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">实际定价：</span><span class="detail-value">{{ book.actual_price || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">状态：</span><span class="detail-value"><span :class="'status-tag ' + getStatusClass(book.book_status)">{{ book.book_status || '-' }}</span></span></div>
+                                                <div class="detail-item"><span class="detail-label">更新时间：</span><span class="detail-value">{{ formatDate(book.updated_at) }}</span></div>
+                                                <div class="detail-item full-width"><span class="detail-label">备注：</span><span class="detail-value">{{ book.remarks || '-' }}</span></div>
+                                            </div>
                                         </div>
                                     </td>
                                 </tr>
@@ -249,7 +269,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="contract in filteredContracts" :key="contract.id">
+                                <tr v-for="contract in filteredContracts" :key="contract.id" @dblclick="toggleRowDetail('contract', contract)">
                                     <td>{{ formatId('contracts', contract.id) }}</td>
                                     <td>{{ contract.contract_name }}</td>
                                     <td>{{ contract.foreign_publisher_name || '-' }}</td>
@@ -269,9 +289,29 @@
                                     </td>
                                     <td>
                                         <div class="action-buttons">
-                                            <button class="btn btn-default btn-sm" @click="viewDetail('contract', contract.id)">查看</button>
-                                            <button class="btn btn-default btn-sm" @click="editRecord('contract', contract.id)">编辑</button>
-                                            <button class="btn btn-danger btn-sm" @click="deleteRecord('contracts', contract.id)">删除</button>
+                                            <button class="btn btn-default btn-sm" @click.stop="editRecord('contract', contract.id)">编辑</button>
+                                            <button class="btn btn-danger btn-sm" @click.stop="deleteRecord('contracts', contract.id)">删除</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <!-- 详情展开行 -->
+                                <tr v-if="expandedRowId === 'contract_' + contract.id" class="detail-expand-row">
+                                    <td colspan="9">
+                                        <div class="detail-expand">
+                                            <div class="detail-expand-header">📄 合同详情</div>
+                                            <div class="detail-expand-grid">
+                                                <div class="detail-item"><span class="detail-label">编号：</span><span class="detail-value">{{ formatId('contracts', contract.id) }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">合同名称：</span><span class="detail-value">{{ contract.contract_name || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">外方出版社：</span><span class="detail-value">{{ contract.foreign_publisher_name || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">关联图书数：</span><span class="detail-value">{{ contract.related_book_count || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">版税类型：</span><span class="detail-value">{{ contract.royalty_type || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">合同状态：</span><span class="detail-value"><span :class="'status-tag ' + getContractStatusClass(contract.contract_status)">{{ contract.contract_status || '-' }}</span></span></div>
+                                                <div class="detail-item"><span class="detail-label">签订日期：</span><span class="detail-value">{{ contract.sign_date || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">开始日期：</span><span class="detail-value">{{ contract.start_date || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">结束日期：</span><span class="detail-value">{{ contract.end_date || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">有效期类型：</span><span class="detail-value">{{ contract.validity_type || '-' }}</span></div>
+                                                <div class="detail-item full-width"><span class="detail-label">备注：</span><span class="detail-value">{{ contract.remarks || '-' }}</span></div>
+                                            </div>
                                         </div>
                                     </td>
                                 </tr>
@@ -311,7 +351,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="publisher in filteredPublishers" :key="publisher.id">
+                                <tr v-for="publisher in filteredPublishers" :key="publisher.id" @dblclick="toggleRowDetail('foreignPublisher', publisher)">
                                     <td>{{ formatId('foreignPublishers', publisher.id) }}</td>
                                     <td>{{ publisher.original_name }}</td>
                                     <td>{{ publisher.chinese_name || '-' }}</td>
@@ -320,9 +360,27 @@
                                     <td>{{ publisher.contact_email || '-' }}</td>
                                     <td>
                                         <div class="action-buttons">
-                                            <button class="btn btn-default btn-sm" @click="viewDetail('foreignPublisher', publisher.id)">查看</button>
-                                            <button class="btn btn-default btn-sm" @click="editRecord('foreignPublisher', publisher.id)">编辑</button>
-                                            <button class="btn btn-danger btn-sm" @click="deleteRecord('foreign_publishers', publisher.id)">删除</button>
+                                            <button class="btn btn-default btn-sm" @click.stop="editRecord('foreignPublisher', publisher.id)">编辑</button>
+                                            <button class="btn btn-danger btn-sm" @click.stop="deleteRecord('foreign_publishers', publisher.id)">删除</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <!-- 详情展开行 -->
+                                <tr v-if="expandedRowId === 'foreignPublisher_' + publisher.id" class="detail-expand-row">
+                                    <td colspan="7">
+                                        <div class="detail-expand">
+                                            <div class="detail-expand-header">🏢 外商详情</div>
+                                            <div class="detail-expand-grid">
+                                                <div class="detail-item"><span class="detail-label">编号：</span><span class="detail-value">{{ formatId('foreignPublishers', publisher.id) }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">外文名称：</span><span class="detail-value">{{ publisher.original_name || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">中文名称：</span><span class="detail-value">{{ publisher.chinese_name || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">国家：</span><span class="detail-value">{{ publisher.country || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">联系人：</span><span class="detail-value">{{ publisher.contact_name || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">职位：</span><span class="detail-value">{{ publisher.contact_title || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">邮箱：</span><span class="detail-value">{{ publisher.contact_email || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">样书状态：</span><span class="detail-value">{{ publisher.sample_book_received ? '已收到' : '未收到' }}</span></div>
+                                                <div class="detail-item full-width"><span class="detail-label">备注：</span><span class="detail-value">{{ publisher.remarks || '-' }}</span></div>
+                                            </div>
                                         </div>
                                     </td>
                                 </tr>
@@ -364,7 +422,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="translator in filteredTranslators" :key="translator.id">
+                                <tr v-for="translator in filteredTranslators" :key="translator.id" @dblclick="toggleRowDetail('translator', translator)">
                                     <td>{{ formatId('translators', translator.id) }}</td>
                                     <td>{{ translator.name }}</td>
                                     <td>{{ translator.languages }}</td>
@@ -386,9 +444,27 @@
                                     </td>
                                     <td>
                                         <div class="action-buttons">
-                                            <button class="btn btn-default btn-sm" @click="viewDetail('translator', translator.id)">查看</button>
-                                            <button class="btn btn-default btn-sm" @click="editRecord('translator', translator.id)">编辑</button>
-                                            <button class="btn btn-danger btn-sm" @click="deleteRecord('translators', translator.id)">删除</button>
+                                            <button class="btn btn-default btn-sm" @click.stop="editRecord('translator', translator.id)">编辑</button>
+                                            <button class="btn btn-danger btn-sm" @click.stop="deleteRecord('translators', translator.id)">删除</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <!-- 详情展开行 -->
+                                <tr v-if="expandedRowId === 'translator_' + translator.id" class="detail-expand-row">
+                                    <td colspan="9">
+                                        <div class="detail-expand">
+                                            <div class="detail-expand-header">👤 译者详情</div>
+                                            <div class="detail-expand-grid">
+                                                <div class="detail-item"><span class="detail-label">编号：</span><span class="detail-value">{{ formatId('translators', translator.id) }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">姓名：</span><span class="detail-value">{{ translator.name || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">擅长语种：</span><span class="detail-value">{{ translator.languages || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">专业领域：</span><span class="detail-value">{{ translator.specialization || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">分级：</span><span class="detail-value">{{ translator.level || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">报价：</span><span class="detail-value">{{ translator.rate_per_thousand ? translator.rate_per_thousand + '元/千字' : '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">联系方式：</span><span class="detail-value">{{ translator.contact_info || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">合同日期：</span><span class="detail-value">{{ translator.contract_date || '-' }}</span></div>
+                                                <div class="detail-item full-width"><span class="detail-label">备注：</span><span class="detail-value">{{ translator.remarks || '-' }}</span></div>
+                                            </div>
                                         </div>
                                     </td>
                                 </tr>
@@ -424,7 +500,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="idea in topicIdeas" :key="idea.id">
+                                <tr v-for="idea in topicIdeas" :key="idea.id" @dblclick="toggleRowDetail('topicIdea', idea)">
                                     <td>{{ formatId('topicIdeas', idea.id) }}</td>
                                     <td>{{ idea.chinese_publisher_name }}</td>
                                     <td>{{ idea.author_name }}</td>
@@ -433,9 +509,28 @@
                                     <td><span :class="'status-tag ' + getStatusClass(idea.intention_status)">{{ idea.intention_status }}</span></td>
                                     <td>
                                         <div class="action-buttons">
-                                            <button class="btn btn-default btn-sm" @click="viewDetail('topicIdea', idea.id)">查看</button>
-                                            <button class="btn btn-default btn-sm" @click="editRecord('topicIdea', idea.id)">编辑</button>
-                                            <button class="btn btn-danger btn-sm" @click="deleteRecord('topic_ideas', idea.id)">删除</button>
+                                            <button class="btn btn-default btn-sm" @click.stop="editRecord('topicIdea', idea.id)">编辑</button>
+                                            <button class="btn btn-danger btn-sm" @click.stop="deleteRecord('topic_ideas', idea.id)">删除</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <!-- 详情展开行 -->
+                                <tr v-if="expandedRowId === 'topicIdea_' + idea.id" class="detail-expand-row">
+                                    <td colspan="7">
+                                        <div class="detail-expand">
+                                            <div class="detail-expand-header">💡 意向选题详情</div>
+                                            <div class="detail-expand-grid">
+                                                <div class="detail-item"><span class="detail-label">编号：</span><span class="detail-value">{{ formatId('topicIdeas', idea.id) }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">外方出版社：</span><span class="detail-value">{{ idea.chinese_publisher_name || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">原名：</span><span class="detail-value">{{ idea.original_publisher_name || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">作者姓名：</span><span class="detail-value">{{ idea.author_name || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">国家：</span><span class="detail-value">{{ idea.publisher_country || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">作者国籍：</span><span class="detail-value">{{ idea.author_country || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">性别：</span><span class="detail-value">{{ idea.author_gender || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">录入日期：</span><span class="detail-value">{{ idea.intention_date || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">意向状态：</span><span class="detail-value"><span :class="'status-tag ' + getStatusClass(idea.intention_status)">{{ idea.intention_status || '-' }}</span></span></div>
+                                                <div class="detail-item full-width"><span class="detail-label">备注：</span><span class="detail-value">{{ idea.remarks || '-' }}</span></div>
+                                            </div>
                                         </div>
                                     </td>
                                 </tr>
@@ -472,7 +567,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="royalty in royalties" :key="royalty.id">
+                                <tr v-for="royalty in royalties" :key="royalty.id" @dblclick="toggleRowDetail('royalty', royalty)">
                                     <td>{{ formatId('royalties', royalty.id) }}</td>
                                     <td>{{ formatId('contracts', royalty.contract_id) }}</td>
                                     <td>{{ formatId('books', royalty.book_id) }}</td>
@@ -482,9 +577,28 @@
                                     <td>{{ royalty.total_paid_amount || '-' }}</td>
                                     <td>
                                         <div class="action-buttons">
-                                            <button class="btn btn-default btn-sm" @click="viewDetail('royalty', royalty.id)">查看</button>
-                                            <button class="btn btn-default btn-sm" @click="editRecord('royalty', royalty.id)">编辑</button>
-                                            <button class="btn btn-danger btn-sm" @click="deleteRecord('royalties', royalty.id)">删除</button>
+                                            <button class="btn btn-default btn-sm" @click.stop="editRecord('royalty', royalty.id)">编辑</button>
+                                            <button class="btn btn-danger btn-sm" @click.stop="deleteRecord('royalties', royalty.id)">删除</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <!-- 详情展开行 -->
+                                <tr v-if="expandedRowId === 'royalty_' + royalty.id" class="detail-expand-row">
+                                    <td colspan="8">
+                                        <div class="detail-expand">
+                                            <div class="detail-expand-header">💰 版税详情</div>
+                                            <div class="detail-expand-grid">
+                                                <div class="detail-item"><span class="detail-label">编号：</span><span class="detail-value">{{ formatId('royalties', royalty.id) }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">合同ID：</span><span class="detail-value">{{ formatId('contracts', royalty.contract_id) }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">图书ID：</span><span class="detail-value">{{ formatId('books', royalty.book_id) }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">版税类型：</span><span class="detail-value">{{ royalty.royalty_type || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">版税率：</span><span class="detail-value">{{ royalty.royalty_rate ? royalty.royalty_rate + '%' : '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">预付金额：</span><span class="detail-value">{{ royalty.advance_amount || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">已支付预付：</span><span class="detail-value">{{ royalty.advance_paid ? '是' : '否' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">累计支付：</span><span class="detail-value">{{ royalty.total_paid_amount || '-' }}</span></div>
+                                                <div class="detail-item"><span class="detail-label">最近支付：</span><span class="detail-value">{{ royalty.last_payment_date || '-' }}</span></div>
+                                                <div class="detail-item full-width"><span class="detail-label">备注：</span><span class="detail-value">{{ royalty.remarks || '-' }}</span></div>
+                                            </div>
                                         </div>
                                     </td>
                                 </tr>

@@ -75,6 +75,9 @@ createApp({
         const showDetailModal = ref(false);
         const detailData = ref(null);
         
+        // 双击展开详情状态
+        const expandedRowId = ref(null);
+        
         // 消息提示
         const showToast = ref(false);
         const toastMessage = ref('');
@@ -950,6 +953,18 @@ createApp({
             }
         }
         
+        // 切换行详情展开/收起
+        function toggleRowDetail(type, row) {
+            const rowKey = type + '_' + row.id;
+            if (expandedRowId.value === rowKey) {
+                // 同一行再次双击，收起详情
+                expandedRowId.value = null;
+            } else {
+                // 展开新行的详情
+                expandedRowId.value = rowKey;
+            }
+        }
+        
         async function viewDetail(type, id) {
             const typeMap = {
                 book: '/books',
@@ -1216,6 +1231,10 @@ createApp({
             formData,
             showDetailModal,
             detailData,
+            
+            // 详情展开
+            expandedRowId,
+            toggleRowDetail,
             
             // 阶梯版税
             tieredTiers,

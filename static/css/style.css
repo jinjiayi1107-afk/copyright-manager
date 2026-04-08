@@ -501,6 +501,82 @@ select.form-input {
     gap: 8px;
 }
 
+/* 表格行双击效果 */
+.table tbody tr {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+/* 详情展开行样式 */
+.detail-expand-row {
+    background: transparent !important;
+}
+
+.detail-expand-row:hover {
+    background: transparent !important;
+}
+
+.detail-expand-row td {
+    padding: 0 16px 16px 16px;
+    border-bottom: none;
+}
+
+/* 详情展开区域 */
+.detail-expand {
+    background: #f8fafc;
+    border: 1px solid #e0e6ed;
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 8px;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.detail-expand-header {
+    font-weight: 600;
+    color: #5B9BD5;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed #e0e6ed;
+}
+
+.detail-expand-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.detail-item {
+    display: flex;
+    gap: 8px;
+}
+
+.detail-item.full-width {
+    grid-column: span 2;
+}
+
+/* 详情展开区域内的标签和值样式 */
+.detail-expand .detail-label {
+    color: #666;
+    min-width: 80px;
+    flex-shrink: 0;
+}
+
+.detail-expand .detail-value {
+    color: #333;
+    word-break: break-all;
+}
+
 /* 空状态 */
 .empty-state {
     text-align: center;
