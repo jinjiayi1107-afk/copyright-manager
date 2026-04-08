@@ -533,6 +533,42 @@ def serve_uploaded_file(filename):
     """访问上传的文件"""
     return send_from_directory(UPLOAD_FOLDER, filename)
 
+# ==================== 文件删除接口 ====================
+@app.route('/api/delete-file', methods=['POST'])
+def delete_file():
+    """删除上传的文件"""
+    try:
+        data = request.get_json()
+        file_path = data.get('file_path')
+        
+        if not file_path:
+            return jsonify({'success': False, 'error': '缺少文件路径'})
+        
+        # 安全检查：只允许删除uploads目录下的文件
+        # 防止路径遍历攻击
+        if '..' in file_path or file_path.startswith('/') or file_path.startswith('\\'):
+            return jsonify({'success': False, 'error': '非法文件路径'})
+        
+        # 完整文件路径
+        full_path = os.path.join(UPLOAD_FOLDER, file_path)
+        
+        # 检查文件是否存在
+        if not os.path.exists(full_path):
+            return jsonify({'success': False, 'error': '文件不存在'})
+        
+        # 检查文件是否在uploads目录内（防止目录遍历）
+        real_upload_folder = os.path.realpath(UPLOAD_FOLDER)
+        real_file_path = os.path.realpath(full_path)
+        if not real_file_path.startswith(real_upload_folder):
+            return jsonify({'success': False, 'error': '非法文件路径'})
+        
+        # 删除文件
+        os.remove(full_path)
+        
+        return jsonify({'success': True, 'message': '文件删除成功'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 # ==================== 枚举值接口 ====================
 @app.route('/api/enums', methods=['GET'])
 def get_enums():

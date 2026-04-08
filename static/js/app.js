@@ -835,6 +835,49 @@ createApp({
             event.target.value = '';
         }
         
+        // 删除文件函数
+        async function deleteFile(recordType, recordId, fileField, fileName, event) {
+            if (event) {
+                event.stopPropagation();
+            }
+            
+            if (!confirm('确定要删除这个文件吗？')) return;
+            
+            try {
+                const res = await api.post('/delete-file', { file_path: fileName });
+                
+                if (res.success) {
+                    // 更新记录，移除文件字段
+                    const updateData = { [fileField]: null };
+                    const typeEndpointMap = {
+                        book: '/books',
+                        contract: '/contracts',
+                        translator: '/translators'
+                    };
+                    const endpoint = typeEndpointMap[recordType];
+                    
+                    if (endpoint) {
+                        await api.put(`${endpoint}/${recordId}`, updateData);
+                    }
+                    
+                    showToastMessage('文件删除成功');
+                    
+                    // 刷新对应列表
+                    if (recordType === 'book') {
+                        await loadBooks();
+                    } else if (recordType === 'contract') {
+                        await loadContracts();
+                    } else if (recordType === 'translator') {
+                        await loadTranslators();
+                    }
+                } else {
+                    showToastMessage(res.error || '删除失败', 'error');
+                }
+            } catch (e) {
+                showToastMessage('删除失败: ' + e.message, 'error');
+            }
+        }
+        
         // 监听页面切换
         watch(currentPage, () => {
             nextTick(() => {
@@ -927,7 +970,8 @@ createApp({
             goToReminder,
             uploadContractFile,
             uploadBookFile,
-            uploadTranslatorFile
+            uploadTranslatorFile,
+            deleteFile
         };
     }
 }).mount('#app');
