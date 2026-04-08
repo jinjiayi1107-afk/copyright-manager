@@ -986,19 +986,23 @@ select.form-input {
 /* 消息提示 */
 .toast {
     position: fixed;
-    top: 80px;
-    right: 24px;
-    padding: 14px 20px;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    padding: 14px 28px;
     border-radius: 8px;
     background: var(--card-bg);
     box-shadow: var(--shadow-lg);
     z-index: 1001;
-    transform: translateX(120%);
-    transition: transform 0.3s;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
 }
 
 .toast.show {
-    transform: translateX(0);
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+    visibility: visible;
 }
 
 .toast.success {
