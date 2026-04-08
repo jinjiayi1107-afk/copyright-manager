@@ -184,7 +184,8 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="book in filteredBooks" :key="book.id" @dblclick="toggleRowDetail('book', book)">
+                                <template v-for="book in filteredBooks" :key="book.id">
+                                <tr @dblclick="toggleRowDetail('book', book)">
                                     <td>{{ formatId('books', book.id) }}</td>
                                     <td>{{ book.original_title }}</td>
                                     <td>{{ book.chinese_title }}</td>
@@ -231,6 +232,7 @@
                                         </div>
                                     </td>
                                 </tr>
+                                </template>
                                 <tr v-if="filteredBooks.length === 0">
                                     <td colspan="10" class="empty-state">
                                         <div class="empty-icon">📚</div>
@@ -269,7 +271,8 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="contract in filteredContracts" :key="contract.id" @dblclick="toggleRowDetail('contract', contract)">
+                                <template v-for="contract in filteredContracts" :key="contract.id">
+                                <tr @dblclick="toggleRowDetail('contract', contract)">
                                     <td>{{ formatId('contracts', contract.id) }}</td>
                                     <td>{{ contract.contract_name }}</td>
                                     <td>{{ contract.foreign_publisher_name || '-' }}</td>
@@ -315,6 +318,7 @@
                                         </div>
                                     </td>
                                 </tr>
+                                </template>
                                 <tr v-if="filteredContracts.length === 0">
                                     <td colspan="8" class="empty-state">
                                         <div class="empty-icon">📄</div>
@@ -351,7 +355,8 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="publisher in filteredPublishers" :key="publisher.id" @dblclick="toggleRowDetail('foreignPublisher', publisher)">
+                                <template v-for="publisher in filteredPublishers" :key="publisher.id">
+                                <tr @dblclick="toggleRowDetail('foreignPublisher', publisher)">
                                     <td>{{ formatId('foreignPublishers', publisher.id) }}</td>
                                     <td>{{ publisher.original_name }}</td>
                                     <td>{{ publisher.chinese_name || '-' }}</td>
@@ -384,6 +389,7 @@
                                         </div>
                                     </td>
                                 </tr>
+                                </template>
                                 <tr v-if="filteredPublishers.length === 0">
                                     <td colspan="7" class="empty-state">
                                         <div class="empty-icon">🏢</div>
@@ -422,7 +428,8 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="translator in filteredTranslators" :key="translator.id" @dblclick="toggleRowDetail('translator', translator)">
+                                <template v-for="translator in filteredTranslators" :key="translator.id">
+                                <tr @dblclick="toggleRowDetail('translator', translator)">
                                     <td>{{ formatId('translators', translator.id) }}</td>
                                     <td>{{ translator.name }}</td>
                                     <td>{{ translator.languages }}</td>
@@ -468,6 +475,7 @@
                                         </div>
                                     </td>
                                 </tr>
+                                </template>
                                 <tr v-if="filteredTranslators.length === 0">
                                     <td colspan="8" class="empty-state">
                                         <div class="empty-icon">👤</div>
@@ -500,7 +508,8 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="idea in topicIdeas" :key="idea.id" @dblclick="toggleRowDetail('topicIdea', idea)">
+                                <template v-for="idea in topicIdeas" :key="idea.id">
+                                <tr @dblclick="toggleRowDetail('topicIdea', idea)">
                                     <td>{{ formatId('topicIdeas', idea.id) }}</td>
                                     <td>{{ idea.chinese_publisher_name }}</td>
                                     <td>{{ idea.author_name }}</td>
@@ -534,6 +543,7 @@
                                         </div>
                                     </td>
                                 </tr>
+                                </template>
                                 <tr v-if="topicIdeas.length === 0">
                                     <td colspan="7" class="empty-state">
                                         <div class="empty-icon">💡</div>
@@ -567,7 +577,8 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="royalty in royalties" :key="royalty.id" @dblclick="toggleRowDetail('royalty', royalty)">
+                                <template v-for="royalty in royalties" :key="royalty.id">
+                                <tr @dblclick="toggleRowDetail('royalty', royalty)">
                                     <td>{{ formatId('royalties', royalty.id) }}</td>
                                     <td>{{ formatId('contracts', royalty.contract_id) }}</td>
                                     <td>{{ formatId('books', royalty.book_id) }}</td>
@@ -602,6 +613,7 @@
                                         </div>
                                     </td>
                                 </tr>
+                                </template>
                                 <tr v-if="royalties.length === 0">
                                     <td colspan="8" class="empty-state">
                                         <div class="empty-icon">💰</div>
