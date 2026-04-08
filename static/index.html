@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>版权管理系统</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- 顶部导航栏 -->
+        <header class="header">
+            <h1>版权管理系统</h1>
+            <span class="subtitle">Copyright Management System</span>
+        </header>
+
+        <div class="container">
+            <!-- 侧边导航 -->
+            <nav class="sidebar">
+                <div class="nav-item" :class="{active: currentPage === 'dashboard'}" @click="currentPage = 'dashboard'">
+                    <span class="icon">📊</span>
+                    <span>数据看板</span>
+                </div>
+                <div class="nav-item" :class="{active: currentPage === 'books'}" @click="currentPage = 'books'">
+                    <span class="icon">📚</span>
+                    <span>外版图书档案</span>
+                </div>
+                <div class="nav-item" :class="{active: currentPage === 'contracts'}" @click="currentPage = 'contracts'">
+                    <span class="icon">📄</span>
+                    <span>合同管理</span>
+                </div>
+                <div class="nav-item" :class="{active: currentPage === 'foreignPublishers'}" @click="currentPage = 'foreignPublishers'">
+                    <span class="icon">🏢</span>
+                    <span>外商库</span>
+                </div>
+                <div class="nav-item" :class="{active: currentPage === 'translators'}" @click="currentPage = 'translators'">
+                    <span class="icon">👤</span>
+                    <span>译者库</span>
+                </div>
+                <div class="nav-item" :class="{active: currentPage === 'topicIdeas'}" @click="currentPage = 'topicIdeas'">
+                    <span class="icon">💡</span>
+                    <span>意向选题库</span>
+                </div>
+                <div class="nav-item" :class="{active: currentPage === 'royalties'}" @click="currentPage = 'royalties'">
+                    <span class="icon">💰</span>
+                    <span>版税管理</span>
+                </div>
+            </nav>
+
+            <!-- 主内容区 -->
+            <main class="main-content">
+                <!-- 数据看板 -->
+                <div v-if="currentPage === 'dashboard'">
+                    <div class="page-header">
+                        <h2 class="page-title">数据看板</h2>
+                    </div>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon">📚</div>
+                            <div class="stat-value">{{ statistics.total_books }}</div>
+                            <div class="stat-label">图书档案总数</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">📄</div>
+                            <div class="stat-value">{{ statistics.total_contracts }}</div>
+                            <div class="stat-label">合同总数</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">🏢</div>
+                            <div class="stat-value">{{ statistics.total_foreign_publishers }}</div>
+                            <div class="stat-label">外商总数</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">👤</div>
+                            <div class="stat-value">{{ statistics.total_translators }}</div>
+                            <div class="stat-label">译者总数</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">💡</div>
+                            <div class="stat-value">{{ statistics.total_topic_ideas }}</div>
+                            <div class="stat-label">意向选题</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">💰</div>
+                            <div class="stat-value">{{ statistics.total_royalties }}</div>
+                            <div class="stat-label">版税记录</div>
+                        </div>
+                    </div>
+
+                    <div class="chart-grid">
+                        <div class="chart-card">
+                            <div class="chart-title">图书状态分布</div>
+                            <div ref="bookChart" style="height: 300px;"></div>
+                        </div>
+                        <div class="chart-card">
+                            <div class="chart-title">合同状态分布</div>
+                            <div ref="contractChart" style="height: 300px;"></div>
+                        </div>
+                        <div class="chart-card">
+                            <div class="chart-title">意向选题状态分布</div>
+                            <div ref="topicChart" style="height: 300px;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 外版图书档案 -->
+                <div v-if="currentPage === 'books'">
+                    <div class="page-header">
+                        <h2 class="page-title">外版图书档案</h2>
+                        <button class="btn btn-primary" @click="openModal('book')">+ 新增档案</button>
+                    </div>
+
+                    <div class="search-bar">
+                        <input type="text" class="form-input" placeholder="搜索出版社名称或合同名称..." v-model="searchKeyword" @input="searchBooks">
+                    </div>
+
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>出版社名称</th>
+                                    <th>合同名称</th>
+                                    <th>参考定价</th>
+                                    <th>当前状态</th>
+                                    <th>更新时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="book in filteredBooks" :key="book.id">
+                                    <td>{{ book.id }}</td>
+                                    <td>{{ book.publisher_name }}</td>
+                                    <td>{{ book.contract_name }}</td>
+                                    <td>{{ book.reference_price }}</td>
+                                    <td><span :class="'status-tag ' + getStatusClass(book.book_status)">{{ book.book_status }}</span></td>
+                                    <td>{{ formatDate(book.updated_at) }}</td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button class="btn btn-default btn-sm" @click="viewDetail('book', book.id)">查看</button>
+                                            <button class="btn btn-default btn-sm" @click="editRecord('book', book.id)">编辑</button>
+                                            <button class="btn btn-danger btn-sm" @click="deleteRecord('books', book.id)">删除</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr v-if="filteredBooks.length === 0">
+                                    <td colspan="7" class="empty-state">
+                                        <div class="empty-icon">📚</div>
+                                        <p>暂无数据</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 合同管理 -->
+                <div v-if="currentPage === 'contracts'">
+                    <div class="page-header">
+                        <h2 class="page-title">合同管理</h2>
+                        <button class="btn btn-primary" @click="openModal('contract')">+ 新增合同</button>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>合同名称</th>
+                                    <th>外方出版社</th>
+                                    <th>关联图书数</th>
+                                    <th>版税类型</th>
+                                    <th>合同状态</th>
+                                    <th>签订日期</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="contract in contracts" :key="contract.id">
+                                    <td>{{ contract.id }}</td>
+                                    <td>{{ contract.contract_name }}</td>
+                                    <td>{{ contract.foreign_publisher_name || '-' }}</td>
+                                    <td>{{ contract.related_book_count }}</td>
+                                    <td>{{ contract.royalty_type }}</td>
+                                    <td><span :class="'status-tag ' + getContractStatusClass(contract.contract_status)">{{ contract.contract_status }}</span></td>
+                                    <td>{{ contract.sign_date }}</td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button class="btn btn-default btn-sm" @click="viewDetail('contract', contract.id)">查看</button>
+                                            <button class="btn btn-default btn-sm" @click="editRecord('contract', contract.id)">编辑</button>
+                                            <button class="btn btn-danger btn-sm" @click="deleteRecord('contracts', contract.id)">删除</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr v-if="contracts.length === 0">
+                                    <td colspan="8" class="empty-state">
+                                        <div class="empty-icon">📄</div>
+                                        <p>暂无数据</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 外商库 -->
+                <div v-if="currentPage === 'foreignPublishers'">
+                    <div class="page-header">
+                        <h2 class="page-title">外商库</h2>
+                        <button class="btn btn-primary" @click="openModal('foreignPublisher')">+ 新增外商</button>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>外文名称</th>
+                                    <th>中文名称</th>
+                                    <th>国家</th>
+                                    <th>联系人</th>
+                                    <th>邮箱</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="publisher in foreignPublishers" :key="publisher.id">
+                                    <td>{{ publisher.id }}</td>
+                                    <td>{{ publisher.original_name }}</td>
+                                    <td>{{ publisher.chinese_name || '-' }}</td>
+                                    <td>{{ publisher.country }}</td>
+                                    <td>{{ publisher.contact_name || '-' }}</td>
+                                    <td>{{ publisher.contact_email || '-' }}</td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button class="btn btn-default btn-sm" @click="viewDetail('foreignPublisher', publisher.id)">查看</button>
+                                            <button class="btn btn-default btn-sm" @click="editRecord('foreignPublisher', publisher.id)">编辑</button>
+                                            <button class="btn btn-danger btn-sm" @click="deleteRecord('foreign_publishers', publisher.id)">删除</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr v-if="foreignPublishers.length === 0">
+                                    <td colspan="7" class="empty-state">
+                                        <div class="empty-icon">🏢</div>
+                                        <p>暂无数据</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 译者库 -->
+                <div v-if="currentPage === 'translators'">
+                    <div class="page-header">
+                        <h2 class="page-title">译者库</h2>
+                        <button class="btn btn-primary" @click="openModal('translator')">+ 新增译者</button>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>姓名</th>
+                                    <th>擅长语种</th>
+                                    <th>擅长领域</th>
+                                    <th>分级</th>
+                                    <th>报价(元/千字)</th>
+                                    <th>联系方式</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="translator in translators" :key="translator.id">
+                                    <td>{{ translator.id }}</td>
+                                    <td>{{ translator.name }}</td>
+                                    <td>{{ translator.languages }}</td>
+                                    <td>{{ translator.specialization || '-' }}</td>
+                                    <td>{{ translator.level || '-' }}</td>
+                                    <td>{{ translator.rate_per_thousand || '-' }}</td>
+                                    <td>{{ translator.contact_info || '-' }}</td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button class="btn btn-default btn-sm" @click="viewDetail('translator', translator.id)">查看</button>
+                                            <button class="btn btn-default btn-sm" @click="editRecord('translator', translator.id)">编辑</button>
+                                            <button class="btn btn-danger btn-sm" @click="deleteRecord('translators', translator.id)">删除</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr v-if="translators.length === 0">
+                                    <td colspan="8" class="empty-state">
+                                        <div class="empty-icon">👤</div>
+                                        <p>暂无数据</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 意向选题库 -->
+                <div v-if="currentPage === 'topicIdeas'">
+                    <div class="page-header">
+                        <h2 class="page-title">意向选题库</h2>
+                        <button class="btn btn-primary" @click="openModal('topicIdea')">+ 新增选题</button>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>外方出版社(中文)</th>
+                                    <th>作者姓名</th>
+                                    <th>国家</th>
+                                    <th>录入日期</th>
+                                    <th>意向状态</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="idea in topicIdeas" :key="idea.id">
+                                    <td>{{ idea.id }}</td>
+                                    <td>{{ idea.chinese_publisher_name }}</td>
+                                    <td>{{ idea.author_name }}</td>
+                                    <td>{{ idea.publisher_country }}</td>
+                                    <td>{{ idea.intention_date }}</td>
+                                    <td><span :class="'status-tag ' + getStatusClass(idea.intention_status)">{{ idea.intention_status }}</span></td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button class="btn btn-default btn-sm" @click="viewDetail('topicIdea', idea.id)">查看</button>
+                                            <button class="btn btn-default btn-sm" @click="editRecord('topicIdea', idea.id)">编辑</button>
+                                            <button class="btn btn-danger btn-sm" @click="deleteRecord('topic_ideas', idea.id)">删除</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr v-if="topicIdeas.length === 0">
+                                    <td colspan="7" class="empty-state">
+                                        <div class="empty-icon">💡</div>
+                                        <p>暂无数据</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 版税管理 -->
+                <div v-if="currentPage === 'royalties'">
+                    <div class="page-header">
+                        <h2 class="page-title">版税管理</h2>
+                        <button class="btn btn-primary" @click="openModal('royalty')">+ 新增版税</button>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>合同ID</th>
+                                    <th>图书ID</th>
+                                    <th>版税类型</th>
+                                    <th>预付金额</th>
+                                    <th>已支付</th>
+                                    <th>累计支付</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="royalty in royalties" :key="royalty.id">
+                                    <td>{{ royalty.id }}</td>
+                                    <td>{{ royalty.contract_id }}</td>
+                                    <td>{{ royalty.book_id }}</td>
+                                    <td>{{ royalty.royalty_type }}</td>
+                                    <td>{{ royalty.advance_amount || '-' }}</td>
+                                    <td>{{ royalty.advance_paid ? '是' : '否' }}</td>
+                                    <td>{{ royalty.total_paid_amount || '-' }}</td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button class="btn btn-default btn-sm" @click="viewDetail('royalty', royalty.id)">查看</button>
+                                            <button class="btn btn-default btn-sm" @click="editRecord('royalty', royalty.id)">编辑</button>
+                                            <button class="btn btn-danger btn-sm" @click="deleteRecord('royalties', royalty.id)">删除</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr v-if="royalties.length === 0">
+                                    <td colspan="8" class="empty-state">
+                                        <div class="empty-icon">💰</div>
+                                        <p>暂无数据</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- 模态框 -->
+        <div class="modal-overlay" :class="{active: showModal}" @click.self="closeModal">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3 class="modal-title">{{ modalTitle }}</h3>
+                    <button class="modal-close" @click="closeModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form @submit.prevent="submitForm">
+                        <!-- 图书表单 -->
+                        <template v-if="modalType === 'book'">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>合同ID <span class="required">*</span></label>
+                                    <input type="number" class="form-input" v-model="formData.contract_id" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>出版社名称 <span class="required">*</span></label>
+                                    <input type="text" class="form-input" v-model="formData.publisher_name" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>出版社国家 <span class="required">*</span></label>
+                                    <input type="text" class="form-input" v-model="formData.publisher_country" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>合同名称 <span class="required">*</span></label>
+                                    <input type="text" class="form-input" v-model="formData.contract_name" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>参考定价 <span class="required">*</span></label>
+                                    <input type="text" class="form-input" v-model="formData.reference_price" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>实际定价</label>
+                                    <input type="text" class="form-input" v-model="formData.actual_price">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>译者姓名</label>
+                                    <select class="form-input" v-model="formData.translator_id">
+                                        <option value="">请选择</option>
+                                        <option v-for="t in translators" :key="t.id" :value="t.id">{{ t.name }}</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>图书状态</label>
+                                    <select class="form-input" v-model="formData.book_status">
+                                        <option v-for="status in enums.bookStatus" :key="status" :value="status">{{ status }}</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>备注</label>
+                                <textarea class="form-input" v-model="formData.remarks"></textarea>
+                            </div>
+                        </template>
+
+                        <!-- 合同表单 -->
+                        <template v-if="modalType === 'contract'">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>合同名称 <span class="required">*</span></label>
+                                    <input type="text" class="form-input" v-model="formData.contract_name" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>关联图书数量 <span class="required">*</span></label>
+                                    <input type="number" class="form-input" v-model="formData.related_book_count" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>合同签订日期 <span class="required">*</span></label>
+                                    <input type="date" class="form-input" v-model="formData.sign_date" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>起始日期 <span class="required">*</span></label>
+                                    <input type="date" class="form-input" v-model="formData.start_date" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>结束日期</label>
+                                    <input type="date" class="form-input" v-model="formData.end_date">
+                                </div>
+                                <div class="form-group">
+                                    <label>有效期计算方式 <span class="required">*</span></label>
+                                    <select class="form-input" v-model="formData.validity_type" required>
+                                        <option v-for="type in enums.validityType" :key="type" :value="type">{{ type }}</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>外方出版社</label>
+                                    <select class="form-input" v-model="formData.foreign_publisher_id">
+                                        <option value="">请选择</option>
+                                        <option v-for="p in foreignPublishers" :key="p.id" :value="p.id">{{ p.chinese_name || p.original_name }}</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>版税类型 <span class="required">*</span></label>
+                                    <select class="form-input" v-model="formData.royalty_type" required>
+                                        <option v-for="type in enums.royaltyType" :key="type" :value="type">{{ type }}</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>版税率 (%)</label>
+                                    <input type="text" class="form-input" v-model="formData.royalty_rate">
+                                </div>
+                                <div class="form-group">
+                                    <label>预付金</label>
+                                    <input type="text" class="form-input" v-model="formData.advance_payment">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>合同状态</label>
+                                    <select class="form-input" v-model="formData.contract_status">
+                                        <option v-for="status in enums.contractStatus" :key="status" :value="status">{{ status }}</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>首印量</label>
+                                    <input type="number" class="form-input" v-model="formData.first_print_quantity">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>备注</label>
+                                <textarea class="form-input" v-model="formData.remarks"></textarea>
+                            </div>
+                        </template>
+
+                        <!-- 外商表单 -->
+                        <template v-if="modalType === 'foreignPublisher'">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>外文名称 <span class="required">*</span></label>
+                                    <input type="text" class="form-input" v-model="formData.original_name" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>中文名称</label>
+                                    <input type="text" class="form-input" v-model="formData.chinese_name">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>国家 <span class="required">*</span></label>
+                                    <input type="text" class="form-input" v-model="formData.country" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>联系人姓名</label>
+                                    <input type="text" class="form-input" v-model="formData.contact_name">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>联系人职位</label>
+                                    <input type="text" class="form-input" v-model="formData.contact_title">
+                                </div>
+                                <div class="form-group">
+                                    <label>联系人邮箱</label>
+                                    <input type="email" class="form-input" v-model="formData.contact_email">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>备注</label>
+                                <textarea class="form-input" v-model="formData.remarks"></textarea>
+                            </div>
+                        </template>
+
+                        <!-- 译者表单 -->
+                        <template v-if="modalType === 'translator'">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>姓名 <span class="required">*</span></label>
+                                    <input type="text" class="form-input" v-model="formData.name" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>擅长语种 <span class="required">*</span></label>
+                                    <input type="text" class="form-input" v-model="formData.languages" placeholder="如：英语、日语" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>擅长领域</label>
+                                    <input type="text" class="form-input" v-model="formData.specialization" placeholder="如：文学、科技">
+                                </div>
+                                <div class="form-group">
+                                    <label>译者分级</label>
+                                    <select class="form-input" v-model="formData.level">
+                                        <option value="">请选择</option>
+                                        <option v-for="level in enums.translatorLevel" :key="level" :value="level">{{ level }}</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>翻译报价(元/千字)</label>
+                                    <input type="text" class="form-input" v-model="formData.rate_per_thousand">
+                                </div>
+                                <div class="form-group">
+                                    <label>合同日期</label>
+                                    <input type="date" class="form-input" v-model="formData.contract_date">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>联系方式</label>
+                                <input type="text" class="form-input" v-model="formData.contact_info" placeholder="电话或邮箱">
+                            </div>
+                            <div class="form-group">
+                                <label>备注</label>
+                                <textarea class="form-input" v-model="formData.remarks"></textarea>
+                            </div>
+                        </template>
+
+                        <!-- 意向选题表单 -->
+                        <template v-if="modalType === 'topicIdea'">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>外方出版社原名 <span class="required">*</span></label>
+                                    <input type="text" class="form-input" v-model="formData.original_publisher_name" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>外方出版社中文名 <span class="required">*</span></label>
+                                    <input type="text" class="form-input" v-model="formData.chinese_publisher_name" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>外方出版社国籍 <span class="required">*</span></label>
+                                    <input type="text" class="form-input" v-model="formData.publisher_country" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>作者姓名 <span class="required">*</span></label>
+                                    <input type="text" class="form-input" v-model="formData.author_name" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>作者国籍</label>
+                                    <input type="text" class="form-input" v-model="formData.author_country">
+                                </div>
+                                <div class="form-group">
+                                    <label>作者性别</label>
+                                    <select class="form-input" v-model="formData.author_gender">
+                                        <option value="">请选择</option>
+                                        <option value="男">男</option>
+                                        <option value="女">女</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>意向录入日期 <span class="required">*</span></label>
+                                    <input type="date" class="form-input" v-model="formData.intention_date" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>意向状态</label>
+                                    <select class="form-input" v-model="formData.intention_status">
+                                        <option v-for="status in enums.topicStatus" :key="status" :value="status">{{ status }}</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>备注</label>
+                                <textarea class="form-input" v-model="formData.remarks"></textarea>
+                            </div>
+                        </template>
+
+                        <!-- 版税表单 -->
+                        <template v-if="modalType === 'royalty'">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>关联合同ID <span class="required">*</span></label>
+                                    <input type="number" class="form-input" v-model="formData.contract_id" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>关联图书ID <span class="required">*</span></label>
+                                    <input type="number" class="form-input" v-model="formData.book_id" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>版税类型 <span class="required">*</span></label>
+                                    <select class="form-input" v-model="formData.royalty_type" required>
+                                        <option v-for="type in enums.royaltyType" :key="type" :value="type">{{ type }}</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>版税率 (%)</label>
+                                    <input type="text" class="form-input" v-model="formData.royalty_rate">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>预付金金额</label>
+                                    <input type="text" class="form-input" v-model="formData.advance_amount">
+                                </div>
+                                <div class="form-group">
+                                    <label>预付金是否已支付</label>
+                                    <select class="form-input" v-model="formData.advance_paid">
+                                        <option value="0">否</option>
+                                        <option value="1">是</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>累计支付金额</label>
+                                    <input type="text" class="form-input" v-model="formData.total_paid_amount">
+                                </div>
+                                <div class="form-group">
+                                    <label>最近支付日期</label>
+                                    <input type="date" class="form-input" v-model="formData.last_payment_date">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>备注</label>
+                                <textarea class="form-input" v-model="formData.remarks"></textarea>
+                            </div>
+                        </template>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-default" @click="closeModal">取消</button>
+                    <button class="btn btn-primary" @click="submitForm">{{ editingId ? '保存修改' : '确认添加' }}</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 详情模态框 -->
+        <div class="modal-overlay" :class="{active: showDetailModal}" @click.self="closeDetailModal">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3 class="modal-title">详情信息</h3>
+                    <button class="modal-close" @click="closeDetailModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div v-if="detailData" class="detail-section">
+                        <div v-for="(value, key) in detailData" :key="key" class="detail-row">
+                            <div class="detail-label">{{ formatFieldName(key) }}</div>
+                            <div class="detail-value">{{ value || '-' }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-default" @click="closeDetailModal">关闭</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 消息提示 -->
+        <div class="toast" :class="[toastClass, {show: showToast}]">
+            {{ toastMessage }}
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
