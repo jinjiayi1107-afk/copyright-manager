@@ -9,7 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 </head>
 <body>
-    <div id="app">
+    <div id="app" @click="closeAllSearchableSelects">
         <!-- 顶部导航栏 -->
         <header class="header">
             <div class="logo-area">
@@ -515,10 +515,41 @@
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>关联合同 <span class="required">*</span></label>
-                                    <select class="form-input" v-model="formData.contract_id" required>
-                                        <option value="">请选择合同</option>
-                                        <option v-for="c in contracts" :key="c.id" :value="c.id">{{ c.contract_name }}</option>
-                                    </select>
+                                    <div class="searchable-select" :id="'select-bookContract'">
+                                        <div class="searchable-select-input" 
+                                             :class="{active: searchableSelects['bookContract']?.isOpen}"
+                                             @click="toggleSearchableSelect('bookContract')"
+                                             @keydown="handleSearchableKeydown('bookContract', $event)"
+                                             tabindex="0">
+                                            <span v-if="!searchableSelects['bookContract']?.selectedValue || getSearchableSelectText('bookContract') === ''" class="placeholder">
+                                                {{ searchableSelects['bookContract']?.placeholder || '请选择合同' }}
+                                            </span>
+                                            <span v-else class="selected-text">{{ getSearchableSelectText('bookContract') }}</span>
+                                            <span class="dropdown-arrow">▼</span>
+                                        </div>
+                                        <div class="searchable-select-dropdown" :class="{show: searchableSelects['bookContract']?.isOpen}">
+                                            <div class="searchable-select-search">
+                                                <input type="text" 
+                                                       :value="searchableSelects['bookContract']?.searchKeyword || ''"
+                                                       @input="filterSearchableOptions('bookContract', $event.target.value)"
+                                                       @click.stop
+                                                       placeholder="搜索合同...">
+                                            </div>
+                                            <div class="searchable-select-options">
+                                                <div v-for="(option, index) in searchableSelects['bookContract']?.filteredOptions || []" 
+                                                     :key="option.value"
+                                                     class="searchable-select-option"
+                                                     :class="{selected: option.value === searchableSelects['bookContract']?.selectedValue, highlighted: index === searchableSelects['bookContract']?.highlightedIndex}"
+                                                     @click="selectSearchableOption('bookContract', option); formData.contract_id = option.value">
+                                                    <span class="option-label">{{ option.label }}</span>
+                                                    <span v-if="option.hint" class="option-hint">{{ option.hint }}</span>
+                                                </div>
+                                                <div v-if="!searchableSelects['bookContract']?.filteredOptions?.length" class="searchable-select-empty">
+                                                    未找到匹配的合同
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="form-group">
                                     <label>出版社名称 <span class="required">*</span></label>
@@ -557,15 +588,43 @@
                                     </select>
                                 </div>
                             </div>
-                            <!-- 译者选择（带搜索） -->
+                            <!-- 译者选择（可搜索下拉框） -->
                             <div class="form-group">
                                 <label>译者姓名</label>
-                                <div class="searchable-select">
-                                    <input type="text" class="form-input" v-model="translatorSearchKeyword" placeholder="搜索译者...">
-                                    <select class="form-input" v-model="formData.translator_id">
-                                        <option value="">请选择</option>
-                                        <option v-for="t in filteredTranslatorsForSelect" :key="t.id" :value="t.id">{{ t.name }} ({{ t.languages }})</option>
-                                    </select>
+                                <div class="searchable-select" :id="'select-bookTranslator'">
+                                    <div class="searchable-select-input" 
+                                         :class="{active: searchableSelects['bookTranslator']?.isOpen}"
+                                         @click="toggleSearchableSelect('bookTranslator')"
+                                         @keydown="handleSearchableKeydown('bookTranslator', $event)"
+                                         tabindex="0">
+                                        <span v-if="!searchableSelects['bookTranslator']?.selectedValue || getSearchableSelectText('bookTranslator') === ''" class="placeholder">
+                                            {{ searchableSelects['bookTranslator']?.placeholder || '请选择译者' }}
+                                        </span>
+                                        <span v-else class="selected-text">{{ getSearchableSelectText('bookTranslator') }}</span>
+                                        <span class="dropdown-arrow">▼</span>
+                                    </div>
+                                    <div class="searchable-select-dropdown" :class="{show: searchableSelects['bookTranslator']?.isOpen}">
+                                        <div class="searchable-select-search">
+                                            <input type="text" 
+                                                   :value="searchableSelects['bookTranslator']?.searchKeyword || ''"
+                                                   @input="filterSearchableOptions('bookTranslator', $event.target.value)"
+                                                   @click.stop
+                                                   placeholder="搜索译者...">
+                                        </div>
+                                        <div class="searchable-select-options">
+                                            <div v-for="(option, index) in searchableSelects['bookTranslator']?.filteredOptions || []" 
+                                                 :key="option.value"
+                                                 class="searchable-select-option"
+                                                 :class="{selected: option.value === searchableSelects['bookTranslator']?.selectedValue, highlighted: index === searchableSelects['bookTranslator']?.highlightedIndex}"
+                                                 @click="selectSearchableOption('bookTranslator', option); formData.translator_id = option.value">
+                                                <span class="option-label">{{ option.label }}</span>
+                                                <span v-if="option.hint" class="option-hint">{{ option.hint }}</span>
+                                            </div>
+                                            <div v-if="!searchableSelects['bookTranslator']?.filteredOptions?.length" class="searchable-select-empty">
+                                                未找到匹配的译者
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <div class="form-group">
@@ -611,10 +670,41 @@
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>外方出版社</label>
-                                    <select class="form-input" v-model="formData.foreign_publisher_id">
-                                        <option value="">请选择</option>
-                                        <option v-for="p in foreignPublishers" :key="p.id" :value="p.id">{{ p.chinese_name || p.original_name }}</option>
-                                    </select>
+                                    <div class="searchable-select" :id="'select-contractPublisher'">
+                                        <div class="searchable-select-input" 
+                                             :class="{active: searchableSelects['contractPublisher']?.isOpen}"
+                                             @click="toggleSearchableSelect('contractPublisher')"
+                                             @keydown="handleSearchableKeydown('contractPublisher', $event)"
+                                             tabindex="0">
+                                            <span v-if="!searchableSelects['contractPublisher']?.selectedValue || getSearchableSelectText('contractPublisher') === ''" class="placeholder">
+                                                {{ searchableSelects['contractPublisher']?.placeholder || '请选择外方出版社' }}
+                                            </span>
+                                            <span v-else class="selected-text">{{ getSearchableSelectText('contractPublisher') }}</span>
+                                            <span class="dropdown-arrow">▼</span>
+                                        </div>
+                                        <div class="searchable-select-dropdown" :class="{show: searchableSelects['contractPublisher']?.isOpen}">
+                                            <div class="searchable-select-search">
+                                                <input type="text" 
+                                                       :value="searchableSelects['contractPublisher']?.searchKeyword || ''"
+                                                       @input="filterSearchableOptions('contractPublisher', $event.target.value)"
+                                                       @click.stop
+                                                       placeholder="搜索外方出版社...">
+                                            </div>
+                                            <div class="searchable-select-options">
+                                                <div v-for="(option, index) in searchableSelects['contractPublisher']?.filteredOptions || []" 
+                                                     :key="option.value"
+                                                     class="searchable-select-option"
+                                                     :class="{selected: option.value === searchableSelects['contractPublisher']?.selectedValue, highlighted: index === searchableSelects['contractPublisher']?.highlightedIndex}"
+                                                     @click="selectSearchableOption('contractPublisher', option); formData.foreign_publisher_id = option.value">
+                                                    <span class="option-label">{{ option.label }}</span>
+                                                    <span v-if="option.hint" class="option-hint">{{ option.hint }}</span>
+                                                </div>
+                                                <div v-if="!searchableSelects['contractPublisher']?.filteredOptions?.length" class="searchable-select-empty">
+                                                    未找到匹配的外方出版社
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="form-group">
                                     <label>版税类型 <span class="required">*</span></label>

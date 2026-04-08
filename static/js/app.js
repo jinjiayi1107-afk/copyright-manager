@@ -85,6 +85,134 @@ createApp({
         const contractChart = ref(null);
         const topicChart = ref(null);
         
+        // 可搜索下拉框状态管理
+        const searchableSelects = ref({});
+        const activeSelectId = ref(null);
+        
+        // 初始化可搜索下拉框
+        function initSearchableSelect(id, options, selectedValue, placeholder) {
+            searchableSelects.value[id] = {
+                options: options,
+                filteredOptions: [...options],
+                searchKeyword: '',
+                selectedValue: selectedValue || '',
+                placeholder: placeholder || '请选择',
+                highlightedIndex: -1,
+                isOpen: false
+            };
+        }
+        
+        // 切换下拉框展开/收起
+        function toggleSearchableSelect(id) {
+            const select = searchableSelects.value[id];
+            if (!select) return;
+            
+            if (select.isOpen) {
+                select.isOpen = false;
+                activeSelectId.value = null;
+            } else {
+                // 关闭其他下拉框
+                closeAllSearchableSelects();
+                select.isOpen = true;
+                select.searchKeyword = '';
+                select.filteredOptions = [...select.options];
+                select.highlightedIndex = -1;
+                activeSelectId.value = id;
+            }
+        }
+        
+        // 过滤选项
+        function filterSearchableOptions(id, keyword) {
+            const select = searchableSelects.value[id];
+            if (!select) return;
+            
+            select.searchKeyword = keyword;
+            select.filteredOptions = select.options.filter(opt => {
+                const label = opt.label || opt.name || '';
+                const hint = opt.hint || '';
+                const searchStr = (label + ' ' + hint).toLowerCase();
+                return searchStr.includes(keyword.toLowerCase());
+            });
+            select.highlightedIndex = select.filteredOptions.length > 0 ? 0 : -1;
+        }
+        
+        // 选择选项
+        function selectSearchableOption(id, option) {
+            const select = searchableSelects.value[id];
+            if (!select) return;
+            
+            select.selectedValue = option.value;
+            select.isOpen = false;
+            activeSelectId.value = null;
+            
+            // 触发回调（如果有）
+            if (select.onChange) {
+                select.onChange(option.value, option);
+            }
+        }
+        
+        // 关闭所有下拉框
+        function closeAllSearchableSelects() {
+            Object.keys(searchableSelects.value).forEach(id => {
+                searchableSelects.value[id].isOpen = false;
+            });
+            activeSelectId.value = null;
+        }
+        
+        // 键盘导航
+        function handleSearchableKeydown(id, event) {
+            const select = searchableSelects.value[id];
+            if (!select || !select.isOpen) {
+                if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowDown') {
+                    toggleSearchableSelect(id);
+                    event.preventDefault();
+                }
+                return;
+            }
+            
+            switch (event.key) {
+                case 'ArrowDown':
+                    event.preventDefault();
+                    if (select.highlightedIndex < select.filteredOptions.length - 1) {
+                        select.highlightedIndex++;
+                    }
+                    break;
+                case 'ArrowUp':
+                    event.preventDefault();
+                    if (select.highlightedIndex > 0) {
+                        select.highlightedIndex--;
+                    }
+                    break;
+                case 'Enter':
+                    event.preventDefault();
+                    if (select.highlightedIndex >= 0 && select.filteredOptions[select.highlightedIndex]) {
+                        selectSearchableOption(id, select.filteredOptions[select.highlightedIndex]);
+                    }
+                    break;
+                case 'Escape':
+                    event.preventDefault();
+                    select.isOpen = false;
+                    activeSelectId.value = null;
+                    break;
+            }
+        }
+        
+        // 获取选中选项的显示文本
+        function getSearchableSelectText(id) {
+            const select = searchableSelects.value[id];
+            if (!select || !select.selectedValue) return '';
+            const option = select.options.find(opt => opt.value === select.selectedValue);
+            return option ? (option.label || option.name || '') : '';
+        }
+        
+        // 更新下拉框选项
+        function updateSearchableOptions(id, options) {
+            const select = searchableSelects.value[id];
+            if (!select) return;
+            select.options = options;
+            select.filteredOptions = [...options];
+        }
+        
         // 计算属性
         const filteredBooks = computed(() => {
             if (!bookSearchKeyword.value) return books.value;
@@ -468,6 +596,37 @@ createApp({
                 loadRoyalties(),
                 loadEnums()
             ]);
+            
+            // 数据加载后更新可搜索下拉框选项
+            updateSearchableSelectsFromData();
+        }
+        
+        // 更新可搜索下拉框的选项（基于当前数据）
+        function updateSearchableSelectsFromData() {
+            if (modalType.value === 'book') {
+                // 更新图书表单的下拉选项
+                const contractOptions = contracts.value.map(c => ({
+                    value: c.id,
+                    label: c.contract_name,
+                    hint: c.foreign_publisher_name || ''
+                }));
+                updateSearchableOptions('bookContract', contractOptions);
+                
+                const translatorOptions = translators.value.map(t => ({
+                    value: t.id,
+                    label: t.name,
+                    hint: t.languages || ''
+                }));
+                updateSearchableOptions('bookTranslator', translatorOptions);
+            } else if (modalType.value === 'contract') {
+                // 更新合同表单的下拉选项
+                const publisherOptions = foreignPublishers.value.map(p => ({
+                    value: p.id,
+                    label: p.chinese_name || p.original_name,
+                    hint: p.original_name || ''
+                }));
+                updateSearchableOptions('contractPublisher', publisherOptions);
+            }
         }
         
         // 渲染图表
@@ -555,10 +714,38 @@ createApp({
             editingId.value = null;
             formData.value = {};
             
-            // 打开图书模态框时清空译者搜索关键字
-            if (type === 'book') {
-                translatorSearchKeyword.value = '';
-            }
+            // 关闭所有可搜索下拉框
+            closeAllSearchableSelects();
+            
+            // 初始化可搜索下拉框
+            nextTick(() => {
+                if (type === 'book') {
+                    // 图书表单：初始化合同选择和译者选择
+                    const contractOptions = contracts.value.map(c => ({
+                        value: c.id,
+                        label: c.contract_name,
+                        hint: c.foreign_publisher_name || ''
+                    }));
+                    initSearchableSelect('bookContract', contractOptions, '', '请选择合同');
+                    
+                    const translatorOptions = translators.value.map(t => ({
+                        value: t.id,
+                        label: t.name,
+                        hint: t.languages || ''
+                    }));
+                    initSearchableSelect('bookTranslator', translatorOptions, '', '请选择译者');
+                    
+                    translatorSearchKeyword.value = '';
+                } else if (type === 'contract') {
+                    // 合同表单：初始化外方出版社选择
+                    const publisherOptions = foreignPublishers.value.map(p => ({
+                        value: p.id,
+                        label: p.chinese_name || p.original_name,
+                        hint: p.original_name || ''
+                    }));
+                    initSearchableSelect('contractPublisher', publisherOptions, '', '请选择外方出版社');
+                }
+            });
             
             // 初始化阶梯档位数据
             initTieredTiers();
@@ -673,6 +860,9 @@ createApp({
             modalType.value = type;
             editingId.value = id;
             
+            // 关闭所有可搜索下拉框
+            closeAllSearchableSelects();
+            
             const typeMap = {
                 book: '/books',
                 contract: '/contracts',
@@ -687,6 +877,34 @@ createApp({
                 const res = await api.get(`${endpoint}/${id}`);
                 if (res.success) {
                     formData.value = { ...res.data };
+                    
+                    // 初始化可搜索下拉框（编辑模式）
+                    nextTick(() => {
+                        if (type === 'book') {
+                            // 图书表单：初始化合同选择和译者选择
+                            const contractOptions = contracts.value.map(c => ({
+                                value: c.id,
+                                label: c.contract_name,
+                                hint: c.foreign_publisher_name || ''
+                            }));
+                            initSearchableSelect('bookContract', contractOptions, res.data.contract_id || '', '请选择合同');
+                            
+                            const translatorOptions = translators.value.map(t => ({
+                                value: t.id,
+                                label: t.name,
+                                hint: t.languages || ''
+                            }));
+                            initSearchableSelect('bookTranslator', translatorOptions, res.data.translator_id || '', '请选择译者');
+                        } else if (type === 'contract') {
+                            // 合同表单：初始化外方出版社选择
+                            const publisherOptions = foreignPublishers.value.map(p => ({
+                                value: p.id,
+                                label: p.chinese_name || p.original_name,
+                                hint: p.original_name || ''
+                            }));
+                            initSearchableSelect('contractPublisher', publisherOptions, res.data.foreign_publisher_id || '', '请选择外方出版社');
+                        }
+                    });
                     
                     // 如果是合同表单且有阶梯版税数据，解析并加载
                     if (type === 'contract' && res.data.tiered_royalty) {
@@ -1014,6 +1232,18 @@ createApp({
             contractChart,
             topicChart,
             
+            // 可搜索下拉框
+            searchableSelects,
+            activeSelectId,
+            initSearchableSelect,
+            toggleSearchableSelect,
+            filterSearchableOptions,
+            selectSearchableOption,
+            closeAllSearchableSelects,
+            handleSearchableKeydown,
+            getSearchableSelectText,
+            updateSearchableOptions,
+            
             // 计算属性
             filteredBooks,
             filteredContracts,
@@ -1044,7 +1274,8 @@ createApp({
             uploadContractFile,
             uploadBookFile,
             uploadTranslatorFile,
-            deleteFile
+            deleteFile,
+            updateSearchableSelectsFromData
         };
     }
 }).mount('#app');
