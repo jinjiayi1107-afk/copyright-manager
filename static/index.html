@@ -55,6 +55,26 @@
                 <div v-if="currentPage === 'dashboard'">
                     <div class="page-header">
                         <h2 class="page-title">数据看板</h2>
+                        <!-- 全局搜索框 -->
+                        <div class="global-search">
+                            <input type="text" class="form-input global-search-input" 
+                                   placeholder="搜索图书、合同、译者、外商..." 
+                                   v-model="globalSearchKeyword"
+                                   @input="handleGlobalSearch"
+                                   @focus="showSearchResults = true">
+                            <div class="global-search-results" v-if="showSearchResults && globalSearchResults.length > 0">
+                                <div v-for="result in globalSearchResults" :key="result.type + result.id" 
+                                     class="search-result-item" 
+                                     @click="navigateToResult(result)">
+                                    <span class="result-type">[{{ result.typeName }}]</span>
+                                    <span class="result-title">{{ result.title }}</span>
+                                    <span class="result-subtitle">{{ result.subtitle }}</span>
+                                </div>
+                            </div>
+                            <div class="global-search-results" v-else-if="showSearchResults && globalSearchKeyword && globalSearchResults.length === 0">
+                                <div class="search-no-results">未找到相关结果</div>
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="stats-grid">
@@ -141,7 +161,7 @@
                     </div>
 
                     <div class="search-bar">
-                        <input type="text" class="form-input" placeholder="搜索出版社名称或合同名称..." v-model="searchKeyword" @input="searchBooks">
+                        <input type="text" class="form-input" placeholder="搜索出版社名称、作者、合同名称..." v-model="bookSearchKeyword">
                     </div>
 
                     <div class="table-container">
@@ -201,6 +221,10 @@
                         <button class="btn btn-primary" @click="openModal('contract')">+ 新增合同</button>
                     </div>
 
+                    <div class="search-bar">
+                        <input type="text" class="form-input" placeholder="搜索合同名称、外商名称..." v-model="contractSearchKeyword">
+                    </div>
+
                     <div class="table-container">
                         <table class="table">
                             <thead>
@@ -217,7 +241,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="contract in contracts" :key="contract.id">
+                                <tr v-for="contract in filteredContracts" :key="contract.id">
                                     <td>{{ contract.id }}</td>
                                     <td>{{ contract.contract_name }}</td>
                                     <td>{{ contract.foreign_publisher_name || '-' }}</td>
@@ -242,7 +266,7 @@
                                         </div>
                                     </td>
                                 </tr>
-                                <tr v-if="contracts.length === 0">
+                                <tr v-if="filteredContracts.length === 0">
                                     <td colspan="8" class="empty-state">
                                         <div class="empty-icon">📄</div>
                                         <p>暂无数据</p>
@@ -260,6 +284,10 @@
                         <button class="btn btn-primary" @click="openModal('foreignPublisher')">+ 新增外商</button>
                     </div>
 
+                    <div class="search-bar">
+                        <input type="text" class="form-input" placeholder="搜索原名、中文名、国家..." v-model="publisherSearchKeyword">
+                    </div>
+
                     <div class="table-container">
                         <table class="table">
                             <thead>
@@ -274,7 +302,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="publisher in foreignPublishers" :key="publisher.id">
+                                <tr v-for="publisher in filteredPublishers" :key="publisher.id">
                                     <td>{{ publisher.id }}</td>
                                     <td>{{ publisher.original_name }}</td>
                                     <td>{{ publisher.chinese_name || '-' }}</td>
@@ -289,7 +317,7 @@
                                         </div>
                                     </td>
                                 </tr>
-                                <tr v-if="foreignPublishers.length === 0">
+                                <tr v-if="filteredPublishers.length === 0">
                                     <td colspan="7" class="empty-state">
                                         <div class="empty-icon">🏢</div>
                                         <p>暂无数据</p>
@@ -305,6 +333,10 @@
                     <div class="page-header">
                         <h2 class="page-title">译者库</h2>
                         <button class="btn btn-primary" @click="openModal('translator')">+ 新增译者</button>
+                    </div>
+
+                    <div class="search-bar">
+                        <input type="text" class="form-input" placeholder="搜索姓名、语种..." v-model="translatorSearchKeyword">
                     </div>
 
                     <div class="table-container">
@@ -323,7 +355,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="translator in translators" :key="translator.id">
+                                <tr v-for="translator in filteredTranslators" :key="translator.id">
                                     <td>{{ translator.id }}</td>
                                     <td>{{ translator.name }}</td>
                                     <td>{{ translator.languages }}</td>
@@ -349,7 +381,7 @@
                                         </div>
                                     </td>
                                 </tr>
-                                <tr v-if="translators.length === 0">
+                                <tr v-if="filteredTranslators.length === 0">
                                     <td colspan="8" class="empty-state">
                                         <div class="empty-icon">👤</div>
                                         <p>暂无数据</p>

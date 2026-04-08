@@ -412,6 +412,87 @@ def delete_royalty(id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
+# ==================== 全局搜索接口 ====================
+@app.route('/api/global-search', methods=['GET'])
+def global_search():
+    """全局搜索接口"""
+    try:
+        keyword = request.args.get('keyword', '').strip()
+        if not keyword:
+            return jsonify({'success': True, 'data': []})
+        
+        keyword_lower = keyword.lower()
+        results = []
+        
+        # 搜索外版图书档案
+        books = get_records('books', order_by='id DESC')
+        for book in books:
+            if (keyword_lower in str(book.get('publisher_name', '') or '').lower() or
+                keyword_lower in str(book.get('contract_name', '') or '').lower() or
+                keyword_lower in str(book.get('publisher_country', '') or '').lower()):
+                results.append({
+                    'type': 'book',
+                    'typeName': '图书档案',
+                    'id': book['id'],
+                    'title': book.get('publisher_name', '') or book.get('contract_name', ''),
+                    'subtitle': book.get('contract_name', ''),
+                    'status': book.get('book_status', '')
+                })
+        
+        # 搜索合同管理
+        contracts = get_records('contracts', order_by='id DESC')
+        for contract in contracts:
+            # 获取外商名称
+            publisher_name = ''
+            if contract.get('foreign_publisher_id'):
+                publisher = get_record_by_id('foreign_publishers', contract['foreign_publisher_id'])
+                if publisher:
+                    publisher_name = publisher.get('chinese_name') or publisher.get('original_name', '')
+            
+            if (keyword_lower in str(contract.get('contract_name', '') or '').lower() or
+                keyword_lower in publisher_name.lower()):
+                results.append({
+                    'type': 'contract',
+                    'typeName': '合同',
+                    'id': contract['id'],
+                    'title': contract.get('contract_name', ''),
+                    'subtitle': publisher_name,
+                    'status': contract.get('contract_status', '')
+                })
+        
+        # 搜索译者库
+        translators = get_records('translators', order_by='id DESC')
+        for translator in translators:
+            if (keyword_lower in str(translator.get('name', '') or '').lower() or
+                keyword_lower in str(translator.get('languages', '') or '').lower()):
+                results.append({
+                    'type': 'translator',
+                    'typeName': '译者',
+                    'id': translator['id'],
+                    'title': translator.get('name', ''),
+                    'subtitle': translator.get('languages', ''),
+                    'status': translator.get('level', '')
+                })
+        
+        # 搜索外商库
+        publishers = get_records('foreign_publishers', order_by='id DESC')
+        for publisher in publishers:
+            if (keyword_lower in str(publisher.get('original_name', '') or '').lower() or
+                keyword_lower in str(publisher.get('chinese_name', '') or '').lower() or
+                keyword_lower in str(publisher.get('country', '') or '').lower()):
+                results.append({
+                    'type': 'foreignPublisher',
+                    'typeName': '外商',
+                    'id': publisher['id'],
+                    'title': publisher.get('chinese_name', '') or publisher.get('original_name', ''),
+                    'subtitle': publisher.get('original_name', ''),
+                    'status': publisher.get('country', '')
+                })
+        
+        return jsonify({'success': True, 'data': results})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 # ==================== 文件上传接口 ====================
 @app.route('/api/upload', methods=['POST'])
 def upload_file():

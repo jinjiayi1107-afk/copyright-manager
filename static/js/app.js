@@ -2,13 +2,23 @@
  * 版权管理系统 - 前端逻辑
  */
 
-const { createApp, ref, computed, watch, onMounted, nextTick } = Vue;
+const { createApp, ref, computed, watch, onMounted, nextTick, onUnmounted } = Vue;
 
 createApp({
     setup() {
         // 状态管理
         const currentPage = ref('dashboard');
-        const searchKeyword = ref('');
+        
+        // 全局搜索
+        const globalSearchKeyword = ref('');
+        const globalSearchResults = ref([]);
+        const showSearchResults = ref(false);
+        
+        // 模块搜索关键字
+        const bookSearchKeyword = ref('');
+        const contractSearchKeyword = ref('');
+        const publisherSearchKeyword = ref('');
+        const translatorSearchKeyword = ref('');
         
         // 统计数据
         const statistics = ref({
@@ -77,11 +87,40 @@ createApp({
         
         // 计算属性
         const filteredBooks = computed(() => {
-            if (!searchKeyword.value) return books.value;
-            const keyword = searchKeyword.value.toLowerCase();
+            if (!bookSearchKeyword.value) return books.value;
+            const keyword = bookSearchKeyword.value.toLowerCase();
             return books.value.filter(book => 
                 (book.publisher_name && book.publisher_name.toLowerCase().includes(keyword)) ||
-                (book.contract_name && book.contract_name.toLowerCase().includes(keyword))
+                (book.contract_name && book.contract_name.toLowerCase().includes(keyword)) ||
+                (book.publisher_country && book.publisher_country.toLowerCase().includes(keyword))
+            );
+        });
+        
+        const filteredContracts = computed(() => {
+            if (!contractSearchKeyword.value) return contracts.value;
+            const keyword = contractSearchKeyword.value.toLowerCase();
+            return contracts.value.filter(contract => 
+                (contract.contract_name && contract.contract_name.toLowerCase().includes(keyword)) ||
+                (contract.foreign_publisher_name && contract.foreign_publisher_name.toLowerCase().includes(keyword))
+            );
+        });
+        
+        const filteredPublishers = computed(() => {
+            if (!publisherSearchKeyword.value) return foreignPublishers.value;
+            const keyword = publisherSearchKeyword.value.toLowerCase();
+            return foreignPublishers.value.filter(publisher => 
+                (publisher.original_name && publisher.original_name.toLowerCase().includes(keyword)) ||
+                (publisher.chinese_name && publisher.chinese_name.toLowerCase().includes(keyword)) ||
+                (publisher.country && publisher.country.toLowerCase().includes(keyword))
+            );
+        });
+        
+        const filteredTranslators = computed(() => {
+            if (!translatorSearchKeyword.value) return translators.value;
+            const keyword = translatorSearchKeyword.value.toLowerCase();
+            return translators.value.filter(translator => 
+                (translator.name && translator.name.toLowerCase().includes(keyword)) ||
+                (translator.languages && translator.languages.toLowerCase().includes(keyword))
             );
         });
         
@@ -136,58 +175,100 @@ createApp({
         // 格式化字段名
         function formatFieldName(key) {
             const nameMap = {
-                id: 'ID',
-                original_name: '外文名称',
-                chinese_name: '中文名称',
-                country: '国家',
+                // 通用字段
+                id: '编号',
+                
+                // 外版图书档案字段
+                contract_id: '关联合同',
                 publisher_name: '出版社名称',
                 publisher_country: '出版社国家',
-                contract_name: '合同名称',
-                contract_id: '合同ID',
-                book_id: '图书ID',
-                author_name: '作者姓名',
-                author_country: '作者国籍',
-                author_gender: '作者性别',
+                book_number: '图字号',
+                sample_sent: '样书已寄送',
                 reference_price: '参考定价',
                 actual_price: '实际定价',
+                contract_reference_price: '合同参考定价',
+                contract_actual_price: '合同实际定价',
+                editor_sample_file: '编辑用样书',
+                review_sample_file: '审阅用样书',
+                quotation_file: '报价文件',
+                contract_scan_file: '合同扫描件',
+                countersign_file: '会签文件',
+                translator_languages: '译者语种',
                 book_status: '图书状态',
-                contract_status: '合同状态',
-                intention_status: '意向状态',
-                intention_date: '意向录入日期',
-                sign_date: '合同签订日期',
-                start_date: '起始日期',
+                
+                // 合同管理字段
+                contract_name: '合同名称',
+                contract_file: '合同文件',
+                countersign_file: '会签文件',
+                chinese_translation_file: '中文译本',
+                related_book_count: '关联图书数量',
+                start_date: '开始日期',
                 end_date: '结束日期',
-                validitY_years: '有效期(年)',
-                validity_type: '有效期计算方式',
-                royalty_type: '版税类型',
-                royalty_rate: '版税率',
-                advance_amount: '预付金金额',
+                sign_date: '签订日期',
+                validity_years: '有效期(年)',
+                validity_type: '有效期类型',
+                auto_renewal: '自动续约',
+                agent_id: '代理商ID',
+                commission_fee: '代理费',
+                foreign_publisher_id: '外方出版社',
+                authorization_scope: '授权范围',
+                translator_id: '译者',
                 advance_payment: '预付金',
                 advance_paid: '预付金已支付',
-                total_paid_amount: '累计支付金额',
-                last_payment_date: '最近支付日期',
-                languages: '擅长语种',
-                specialization: '擅长领域',
-                level: '译者分级',
-                rate_per_thousand: '报价(元/千字)',
+                royalty_type: '版税类型',
+                royalty_rate: '版税率',
+                tiered_royalty: '阶梯版税配置',
+                first_print_quantity: '首印量',
+                first_print_requirement: '首印要求',
+                editor_id: '编辑ID',
+                contract_status: '合同状态',
+                
+                // 译者库字段
+                name: '姓名',
+                resume_file: '简历文件',
+                languages: '语种',
+                specialization: '专业领域',
+                level: '级别',
+                rate_per_thousand: '千字费率',
+                contract_date: '合同日期',
+                
+                // 外商库字段
+                original_name: '原名',
+                chinese_name: '中文名',
+                country: '国家',
+                sample_book_received: '已收到样书',
                 contact_name: '联系人姓名',
                 contact_title: '联系人职位',
                 contact_email: '联系人邮箱',
-                contact_info: '联系方式',
-                related_book_count: '关联图书数量',
-                first_print_quantity: '首印量',
-                book_number: '图字号',
+                has_multiple_contacts: '多联系人',
+                
+                // 意向选题库字段
+                original_publisher_name: '外方出版社原名',
+                chinese_publisher_name: '外方出版社中文名',
+                author_name: '作者姓名',
+                author_country: '作者国籍',
+                author_gender: '作者性别',
+                sample_file: '样书文件',
+                intention_status: '意向状态',
+                intention_date: '意向录入日期',
+                
+                // 版税管理字段
+                book_id: '图书ID',
+                advance_amount: '预付金金额',
+                total_paid_amount: '累计支付金额',
+                last_payment_date: '最近支付日期',
+                tiered_structure: '阶梯版税结构',
+                payment_cycle: '支付周期',
+                report_date: '报表日期',
+                payment_reminder: '收款提醒',
+                
+                // 通用字段
                 remarks: '备注',
                 created_at: '创建时间',
                 updated_at: '更新时间',
-                original_publisher_name: '外方出版社原名',
-                chinese_publisher_name: '外方出版社中文名',
                 foreign_publisher_name: '外方出版社名称',
-                translator_id: '译者ID',
                 translator_name: '译者姓名',
-                translator_languages: '译者语种',
-                sample_sent: '已寄送外方样书',
-                payment_reminder: '收款提醒'
+                translator_languages: '译者语种'
             };
             return nameMap[key] || key;
         }
@@ -610,6 +691,43 @@ createApp({
             detailData.value = null;
         }
         
+        // 全局搜索处理
+        let searchTimeout = null;
+        async function handleGlobalSearch() {
+            clearTimeout(searchTimeout);
+            if (!globalSearchKeyword.value.trim()) {
+                globalSearchResults.value = [];
+                return;
+            }
+            searchTimeout = setTimeout(async () => {
+                try {
+                    const res = await api.get('/global-search?keyword=' + encodeURIComponent(globalSearchKeyword.value));
+                    if (res.success) {
+                        globalSearchResults.value = res.data;
+                    }
+                } catch (e) {
+                    console.error('搜索失败', e);
+                }
+            }, 300);
+        }
+        
+        // 跳转到搜索结果
+        function navigateToResult(result) {
+            showSearchResults.value = false;
+            currentPage.value = result.type;
+            nextTick(() => {
+                viewDetail(result.type, result.id);
+            });
+        }
+        
+        // 点击空白处关闭搜索结果
+        function handleClickOutside(event) {
+            const searchContainer = document.querySelector('.global-search');
+            if (searchContainer && !searchContainer.contains(event.target)) {
+                showSearchResults.value = false;
+            }
+        }
+        
         function searchBooks() {
             // 搜索通过计算属性自动处理
         }
@@ -732,12 +850,24 @@ createApp({
             await api.post('/init', {});
             // 加载所有数据
             await loadAllData();
+            // 添加点击空白处关闭搜索结果的事件监听
+            document.addEventListener('click', handleClickOutside);
+        });
+        
+        onUnmounted(() => {
+            document.removeEventListener('click', handleClickOutside);
         });
         
         return {
             // 状态
             currentPage,
-            searchKeyword,
+            globalSearchKeyword,
+            globalSearchResults,
+            showSearchResults,
+            bookSearchKeyword,
+            contractSearchKeyword,
+            publisherSearchKeyword,
+            translatorSearchKeyword,
             statistics,
             reminders,
             reminderCounts,
@@ -775,6 +905,9 @@ createApp({
             
             // 计算属性
             filteredBooks,
+            filteredContracts,
+            filteredPublishers,
+            filteredTranslators,
             
             // 方法
             formatDate,
@@ -788,6 +921,8 @@ createApp({
             deleteRecord,
             viewDetail,
             closeDetailModal,
+            handleGlobalSearch,
+            navigateToResult,
             searchBooks,
             goToReminder,
             uploadContractFile,
