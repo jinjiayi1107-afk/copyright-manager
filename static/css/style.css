@@ -1269,10 +1269,55 @@ select.form-input {
     background: var(--primary-color);
     border-radius: 3px;
 }
-}
 
 /* 详情弹窗中的ID显示样式 */
 .detail-section .detail-row:first-child .detail-value {
     font-weight: 600;
     color: var(--primary-color);
+}
+
+/* 文件上传区域样式 */
+.file-upload-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.file-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--primary-light);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.file-name {
+    font-size: 14px;
+    color: var(--text-color);
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.btn-file-remove {
+    background: none;
+    border: none;
+    color: var(--error-color);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.2s;
+}
+
+.btn-file-remove:hover {
+    background: #fff1f0;
 }

@@ -905,6 +905,19 @@
                                 </div>
                             </div>
                             <div class="form-group">
+                                <label>合同文件</label>
+                                <div class="file-upload-section">
+                                    <input type="file" ref="contractFileInput" @change="handleContractFileSelect" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" style="display:none;">
+                                    <div class="file-display" v-if="selectedContractFile">
+                                        <span class="file-name">{{ selectedContractFile.name }}</span>
+                                        <button type="button" class="btn-file-remove" @click="clearContractFile">×</button>
+                                    </div>
+                                    <button type="button" class="btn btn-default btn-sm" @click="$refs.contractFileInput.click()">
+                                        {{ selectedContractFile ? '更换文件' : '选择文件' }}
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="form-group">
                                 <label>备注</label>
                                 <textarea class="form-input" v-model="formData.remarks"></textarea>
                             </div>
@@ -986,6 +999,19 @@
                             <div class="form-group">
                                 <label>联系方式</label>
                                 <input type="text" class="form-input" v-model="formData.contact_info" placeholder="电话或邮箱">
+                            </div>
+                            <div class="form-group">
+                                <label>简历文件</label>
+                                <div class="file-upload-section">
+                                    <input type="file" ref="resumeFileInput" @change="handleResumeFileSelect" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" style="display:none;">
+                                    <div class="file-display" v-if="selectedResumeFile">
+                                        <span class="file-name">{{ selectedResumeFile.name }}</span>
+                                        <button type="button" class="btn-file-remove" @click="clearResumeFile">×</button>
+                                    </div>
+                                    <button type="button" class="btn btn-default btn-sm" @click="$refs.resumeFileInput.click()">
+                                        {{ selectedResumeFile ? '更换文件' : '选择文件' }}
+                                    </button>
+                                </div>
                             </div>
                             <div class="form-group">
                                 <label>备注</label>

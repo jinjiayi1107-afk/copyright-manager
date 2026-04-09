@@ -64,6 +64,10 @@ createApp({
         const editingId = ref(null);
         const formData = ref({});
         
+        // 文件上传状态
+        const selectedContractFile = ref(null);
+        const selectedResumeFile = ref(null);
+        
         // 阶梯版税档位数据
         const tieredTiers = ref([
             { min: 1, max: 5000, rate: '7' },
@@ -717,6 +721,10 @@ createApp({
             editingId.value = null;
             formData.value = {};
             
+            // 重置文件选择状态
+            selectedContractFile.value = null;
+            selectedResumeFile.value = null;
+            
             // 关闭所有可搜索下拉框
             closeAllSearchableSelects();
             
@@ -770,6 +778,9 @@ createApp({
             modalType.value = '';
             editingId.value = null;
             formData.value = {};
+            // 清除文件选择状态
+            selectedContractFile.value = null;
+            selectedResumeFile.value = null;
             // 重置阶梯档位数据
             initTieredTiers();
         }
@@ -848,6 +859,16 @@ createApp({
                 }
                 
                 if (res.success) {
+                    const recordId = editingId.value || res.id;
+                    
+                    // 上传文件（如果有选择）
+                    if (modalType.value === 'contract' && selectedContractFile.value) {
+                        await uploadFileOnSubmit('contract', recordId, 'contract_file', selectedContractFile.value);
+                    }
+                    if (modalType.value === 'translator' && selectedResumeFile.value) {
+                        await uploadFileOnSubmit('translator', recordId, 'resume_file', selectedResumeFile.value);
+                    }
+                    
                     showToastMessage(editingId.value ? '修改成功' : '添加成功');
                     closeModal();
                     loadAllData();
@@ -1043,6 +1064,51 @@ createApp({
             });
         }
         
+        // 文件选择处理函数
+        function handleContractFileSelect(event) {
+            selectedContractFile.value = event.target.files[0] || null;
+        }
+        
+        function handleResumeFileSelect(event) {
+            selectedResumeFile.value = event.target.files[0] || null;
+        }
+        
+        function clearContractFile() {
+            selectedContractFile.value = null;
+        }
+        
+        function clearResumeFile() {
+            selectedResumeFile.value = null;
+        }
+        
+        // 表单提交时上传文件
+        async function uploadFileOnSubmit(type, recordId, fieldName, file) {
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const res = await fetch(API_BASE + '/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    // 更新记录
+                    const typeMap = {
+                        contract: '/contracts',
+                        translator: '/translators',
+                        book: '/books'
+                    };
+                    await api.put(`${typeMap[type]}/${recordId}`, { [fieldName]: data.filename });
+                } else {
+                    showToastMessage(data.error || '文件上传失败', 'error');
+                }
+            } catch (e) {
+                showToastMessage('文件上传失败: ' + e.message, 'error');
+            }
+        }
+        
         // 文件上传函数
         async function uploadContractFile(contractId, event) {
             const file = event.target.files[0];
@@ -1232,6 +1298,10 @@ createApp({
             showDetailModal,
             detailData,
             
+            // 文件上传状态
+            selectedContractFile,
+            selectedResumeFile,
+            
             // 详情展开
             expandedRowId,
             toggleRowDetail,
@@ -1294,7 +1364,13 @@ createApp({
             uploadBookFile,
             uploadTranslatorFile,
             deleteFile,
-            updateSearchableSelectsFromData
+            updateSearchableSelectsFromData,
+            
+            // 文件选择处理
+            handleContractFileSelect,
+            handleResumeFileSelect,
+            clearContractFile,
+            clearResumeFile
         };
     }
 }).mount('#app');
