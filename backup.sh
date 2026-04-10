@@ -9,12 +9,12 @@
 # ==================== 配置区域 ====================
 # 请根据实际环境修改以下配置
 
-# 数据库配置（与database.py保持一致）
-DB_HOST="localhost"              # MySQL服务器地址
-DB_PORT="3306"                   # MySQL端口
-DB_USER="copyright_user"         # 数据库用户名
-DB_PASSWORD="copyright123"       # 数据库密码
-DB_NAME="copyright_manager"      # 数据库名称
+# 数据库配置（从环境变量读取，与database.py保持一致）
+DB_HOST="${DB_HOST:-localhost}"              # MySQL服务器地址
+DB_PORT="${DB_PORT:-3306}"                   # MySQL端口
+DB_USER="${DB_USER:-copyright_user}"         # 数据库用户名
+DB_PASSWORD="${DB_PASSWORD:-}"               # 数据库密码（必须从环境变量设置）
+DB_NAME="${DB_NAME:-copyright_manager}"      # 数据库名称
 
 # 备份目录配置
 BACKUP_ROOT="/data/backups"      # 备份文件存放根目录
@@ -22,6 +22,14 @@ UPLOAD_DIR="/data/uploads"       # 上传文件目录
 
 # 保留天数（超过此天数的备份会被自动删除）
 KEEP_DAYS=30
+
+# ==================== 环境检查 ====================
+# 检查必要的数据库密码是否设置
+if [ -z "$DB_PASSWORD" ]; then
+    echo "[错误] 未设置数据库密码，请设置环境变量 DB_PASSWORD"
+    echo "示例：export DB_PASSWORD=your_password"
+    exit 1
+fi
 
 # ==================== 脚本开始 ====================
 

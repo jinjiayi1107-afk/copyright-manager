@@ -165,6 +165,7 @@ Environment=DB_PORT=3306
 Environment=DB_USER=copyright_user
 Environment=DB_PASSWORD=your_password
 Environment=DB_NAME=copyright_manager
+Environment=ADMIN_TOKEN=your_secure_token_here
 
 [Install]
 WantedBy=multi-user.target
@@ -176,6 +177,7 @@ WantedBy=multi-user.target
 - 数据库名称：`copyright_manager`
 - 使用pymysql连接，每次操作后自动关闭连接
 - 支持事务和异常处理
+- **SQL注入防护**：表名白名单+参数化查询
 
 ### 数据库配置（环境变量）
 
@@ -188,6 +190,7 @@ WantedBy=multi-user.target
 | `DB_USER` | copyright_user | 数据库用户名 |
 | `DB_PASSWORD` | copyright123 | 数据库密码 |
 | `DB_NAME` | copyright_manager | 数据库名称 |
+| `ADMIN_TOKEN` | 无（必填） | **管理员访问令牌** |
 
 ### 连接与事务
 
@@ -206,6 +209,54 @@ CREATE USER 'copyright_user'@'localhost' IDENTIFIED BY 'copyright123';
 GRANT ALL PRIVILEGES ON copyright_manager.* TO 'copyright_user'@'localhost';
 FLUSH PRIVILEGES;
 ```
+
+## 接口安全
+
+系统使用Token验证机制保护写接口和文件接口。
+
+### Token配置
+
+```bash
+# 设置管理员令牌（必须设置，否则写接口无法使用）
+export ADMIN_TOKEN=your_secure_token_here
+```
+
+### 需要Token的接口
+
+以下接口必须在请求头中携带 `X-ADMIN-TOKEN`：
+
+| 接口类型 | 接口路径 |
+|---------|---------|
+| 所有删除 | `/api/*/DELETE` |
+| 所有更新 | `/api/*/PUT` |
+| 所有创建 | `/api/*/POST` |
+| 文件上传 | `/api/upload` |
+| 文件下载 | `/api/file/download` |
+| 文件删除 | `/api/file/delete` |
+
+### 前端配置示例
+
+```javascript
+// 在请求头中添加Token
+fetch('/api/upload', {
+    method: 'POST',
+    headers: {
+        'X-ADMIN-TOKEN': 'your_secure_token_here'
+    },
+    body: formData
+})
+```
+
+### 删除策略
+
+系统使用外键约束，删除时会检查关联数据：
+
+| 被删数据 | 关联检查 | 失败提示 |
+|---------|---------|---------|
+| 外商 | 合同引用 | "该外商有关联合同，无法删除" |
+| 译者 | 合同引用 | "该译者有关联合同，无法删除" |
+| 合同 | 图书/版税引用 | "该合同有关联图书或版税，无法删除" |
+| 图书 | 版税引用 | "该图书有关联版税，无法删除" |
 
 ### 环境变量配置示例
 
@@ -306,7 +357,8 @@ chmod +x backup.sh
 crontab -e
 
 # 添加以下内容（每天凌晨2点执行备份）
-0 2 * * * /path/to/backup.sh >> /data/backups/cron.log 2>&1
+# 注意：需要设置数据库密码环境变量
+0 2 * * * DB_PASSWORD=your_password /path/to/backup.sh >> /data/backups/cron.log 2>&1
 ```
 
 ### 备份文件存储

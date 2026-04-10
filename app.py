@@ -1,38 +1,73 @@
 #!/usr/bin/env python3
 """
 版权管理系统 - Flask后端API
+包含接口安全验证（Token机制）
 """
 
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
+from functools import wraps
 import os
 import uuid
 from datetime import datetime
 from database import (
     init_db, create_record, get_records, get_record_by_id,
-    update_record, delete_record, count_records, get_statistics, get_reminders
+    update_record, delete_record, get_statistics, get_reminders
 )
 
 app = Flask(__name__, static_folder='static')
 CORS(app)
 
-# ==================== 文件上传配置 ====================
-# 使用Flask配置限制请求大小（10MB），超过会自动返回413错误
-app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
+# ==================== 安全配置 ====================
+# 管理员访问令牌（从环境变量读取，必填）
+# 部署时必须设置：export ADMIN_TOKEN=your_secure_token
+ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN')
 
-# 上传文件存储目录（独立于项目目录）
+# 需要Token验证的接口路径前缀
+PROTECTED_PREFIXES = ('/api/foreign-publishers', '/api/translators', '/api/contracts',
+                       '/api/books', '/api/topic-ideas', '/api/royalties', '/api/file',
+                       '/api/upload')
+
+def require_admin_token(f):
+    """
+    Token验证装饰器
+    验证请求头中的 X-ADMIN-TOKEN 是否与环境变量中的 ADMIN_TOKEN 匹配
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # 如果未设置ADMIN_TOKEN，拒绝所有写操作
+        if not ADMIN_TOKEN:
+            return jsonify({
+                'success': False, 
+                'error': '服务器未配置访问令牌，请联系管理员'
+            }), 500
+        
+        # 获取请求头中的token
+        token = request.headers.get('X-ADMIN-TOKEN')
+        
+        if not token:
+            return jsonify({
+                'success': False, 
+                'error': '缺少访问令牌，请在请求头中添加 X-ADMIN-TOKEN'
+            }), 401
+        
+        if token != ADMIN_TOKEN:
+            return jsonify({
+                'success': False, 
+                'error': '访问令牌无效'
+            }), 403
+        
+        return f(*args, **kwargs)
+    return decorated_function
+
+# ==================== 文件上传配置 ====================
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 最大10MB
 UPLOAD_FOLDER = '/data/uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-# 允许的文件类型（白名单）
 ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'png', 'jpg'}
 
 def allowed_file(filename):
-    """
-    检查文件类型是否允许
-    参数：filename - 原始文件名
-    返回：True/False
-    """
+    """检查文件类型是否允许"""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route('/')
@@ -123,13 +158,18 @@ def update_foreign_publisher(id):
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/foreign-publishers/<int:id>', methods=['DELETE'])
+@require_admin_token
 def delete_foreign_publisher(id):
     """删除外商"""
-    try:
-        delete_record('foreign_publishers', id)
+    result = delete_record('foreign_publishers', id)
+    if result == 'success':
         return jsonify({'success': True})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+    elif result == 'not_found':
+        return jsonify({'success': False, 'error': '记录不存在'})
+    elif result == 'foreign_key':
+        return jsonify({'success': False, 'error': '该外商有关联合同，无法删除'})
+    else:
+        return jsonify({'success': False, 'error': '删除失败'})
 
 # ==================== 译者库接口 ====================
 @app.route('/api/translators', methods=['GET'])
@@ -178,13 +218,18 @@ def update_translator(id):
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/translators/<int:id>', methods=['DELETE'])
+@require_admin_token
 def delete_translator(id):
     """删除译者"""
-    try:
-        delete_record('translators', id)
+    result = delete_record('translators', id)
+    if result == 'success':
         return jsonify({'success': True})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+    elif result == 'not_found':
+        return jsonify({'success': False, 'error': '记录不存在'})
+    elif result == 'foreign_key':
+        return jsonify({'success': False, 'error': '该译者有关联合同，无法删除'})
+    else:
+        return jsonify({'success': False, 'error': '删除失败'})
 
 # ==================== 合同管理接口 ====================
 @app.route('/api/contracts', methods=['GET'])
@@ -239,13 +284,18 @@ def update_contract(id):
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/contracts/<int:id>', methods=['DELETE'])
+@require_admin_token
 def delete_contract(id):
     """删除合同"""
-    try:
-        delete_record('contracts', id)
+    result = delete_record('contracts', id)
+    if result == 'success':
         return jsonify({'success': True})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+    elif result == 'not_found':
+        return jsonify({'success': False, 'error': '记录不存在'})
+    elif result == 'foreign_key':
+        return jsonify({'success': False, 'error': '该合同有关联图书或版税，无法删除'})
+    else:
+        return jsonify({'success': False, 'error': '删除失败'})
 
 # ==================== 外版图书档案接口 ====================
 @app.route('/api/books', methods=['GET'])
@@ -302,13 +352,18 @@ def update_book(id):
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/books/<int:id>', methods=['DELETE'])
+@require_admin_token
 def delete_book(id):
     """删除图书"""
-    try:
-        delete_record('books', id)
+    result = delete_record('books', id)
+    if result == 'success':
         return jsonify({'success': True})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+    elif result == 'not_found':
+        return jsonify({'success': False, 'error': '记录不存在'})
+    elif result == 'foreign_key':
+        return jsonify({'success': False, 'error': '该图书有关联版税，无法删除'})
+    else:
+        return jsonify({'success': False, 'error': '删除失败'})
 
 # ==================== 意向选题库接口 ====================
 @app.route('/api/topic-ideas', methods=['GET'])
@@ -357,13 +412,16 @@ def update_topic_idea(id):
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/topic-ideas/<int:id>', methods=['DELETE'])
+@require_admin_token
 def delete_topic_idea(id):
     """删除意向选题"""
-    try:
-        delete_record('topic_ideas', id)
+    result = delete_record('topic_ideas', id)
+    if result == 'success':
         return jsonify({'success': True})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+    elif result == 'not_found':
+        return jsonify({'success': False, 'error': '记录不存在'})
+    else:
+        return jsonify({'success': False, 'error': '删除失败'})
 
 # ==================== 版税管理接口 ====================
 @app.route('/api/royalties', methods=['GET'])
@@ -412,13 +470,16 @@ def update_royalty(id):
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/royalties/<int:id>', methods=['DELETE'])
+@require_admin_token
 def delete_royalty(id):
     """删除版税"""
-    try:
-        delete_record('royalties', id)
+    result = delete_record('royalties', id)
+    if result == 'success':
         return jsonify({'success': True})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+    elif result == 'not_found':
+        return jsonify({'success': False, 'error': '记录不存在'})
+    else:
+        return jsonify({'success': False, 'error': '删除失败'})
 
 # ==================== 全局搜索接口 ====================
 @app.route('/api/global-search', methods=['GET'])
@@ -503,12 +564,9 @@ def global_search():
 
 # ==================== 文件上传接口 ====================
 @app.route('/api/upload', methods=['POST'])
+@require_admin_token
 def upload_file():
-    """
-    上传文件接口
-    功能：接收文件、重命名、存储、返回文件ID
-    安全措施：类型白名单、大小限制（Flask自动处理）
-    """
+    """上传文件接口（需要Token验证）"""
     try:
         # 检查是否有文件
         if 'file' not in request.files:
@@ -545,13 +603,9 @@ def upload_file():
 
 # ==================== 文件下载接口 ====================
 @app.route('/api/file/download', methods=['GET'])
+@require_admin_token
 def download_file():
-    """
-    文件下载接口
-    参数：id - 文件ID（32位UUID）
-    功能：根据文件ID查找并返回文件，不暴露真实路径
-    安全措施：路径遍历防护、文件存在性检查
-    """
+    """文件下载接口（需要Token验证）"""
     try:
         file_id = request.args.get('id')
         
@@ -590,13 +644,9 @@ def download_file():
 
 # ==================== 文件删除接口 ====================
 @app.route('/api/file/delete', methods=['POST'])
+@require_admin_token
 def delete_file():
-    """
-    文件删除接口
-    参数：id - 文件ID（32位UUID）
-    功能：根据文件ID删除文件
-    安全措施：路径遍历防护、文件存在性检查
-    """
+    """文件删除接口（需要Token验证）"""
     try:
         data = request.get_json()
         file_id = data.get('id')
