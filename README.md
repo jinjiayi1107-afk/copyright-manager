@@ -63,7 +63,7 @@
 | 类型 | 技术 |
 |------|------|
 | 前端 | Vue.js 3 + ECharts 5 |
-| 后端 | Python Flask |
+| 后端 | Python Flask + Gunicorn |
 | 数据库 | MySQL 8.0 |
 | 文件存储 | 本地文件系统 |
 
@@ -260,15 +260,26 @@ fetch('/api/upload', {
 
 ### 环境变量配置示例
 
-**Linux/Mac（生产环境）**：
+**Linux/Mac（开发环境）**：
 ```bash
 # 设置环境变量
 export DB_HOST=localhost
 export DB_USER=your_user
 export DB_PASSWORD=your_password
+export ADMIN_TOKEN=your_token
 
-# 启动服务
+# 启动开发服务器
 python app.py
+```
+
+**Linux/Mac（生产环境）**：
+```bash
+# 创建.env文件
+cp .env.example .env
+# 编辑.env填写实际配置
+
+# 使用Gunicorn启动
+gunicorn -c gunicorn.conf.py app:app
 ```
 
 **Windows**：
@@ -276,6 +287,7 @@ python app.py
 set DB_HOST=localhost
 set DB_USER=your_user
 set DB_PASSWORD=your_password
+set ADMIN_TOKEN=your_token
 python app.py
 ```
 
@@ -326,7 +338,7 @@ python app.py
 git pull
 
 # 重启服务
-sudo systemctl restart smph-book-manager
+sudo systemctl restart copyright-manager
 
 # 注意：数据库和 uploads/ 文件夹需要定期备份
 ```
@@ -358,7 +370,7 @@ crontab -e
 
 # 添加以下内容（每天凌晨2点执行备份）
 # 注意：需要设置数据库密码环境变量
-0 2 * * * DB_PASSWORD=your_password /path/to/backup.sh >> /data/backups/cron.log 2>&1
+0 2 * * * export DB_PASSWORD=your_password && /path/to/backup.sh >> /data/backups/cron.log 2>&1
 ```
 
 ### 备份文件存储
@@ -369,21 +381,18 @@ crontab -e
 
 ### 配置修改
 
-编辑 `backup.sh` 文件顶部的配置区域：
+备份脚本从环境变量读取数据库密码（与database.py一致），无需修改脚本：
 
 ```bash
-# 数据库配置
-DB_HOST="localhost"
-DB_USER="copyright_user"
-DB_PASSWORD="your_password"
-DB_NAME="copyright_manager"
+# 必须设置的环境变量
+export DB_PASSWORD=your_password
 
-# 备份目录
-BACKUP_ROOT="/data/backups"
-UPLOAD_DIR="/data/uploads"
-
-# 保留天数
-KEEP_DAYS=30
+# 可选的环境变量（有默认值）
+export DB_HOST=localhost
+export DB_USER=copyright_user
+export DB_NAME=copyright_manager
+export BACKUP_ROOT=/data/backups
+export UPLOAD_DIR=/data/uploads
 ```
 
 ### 恢复数据
