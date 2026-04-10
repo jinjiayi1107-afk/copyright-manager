@@ -62,7 +62,7 @@
 |------|------|
 | 前端 | Vue.js 3 + ECharts 5 |
 | 后端 | Python Flask |
-| 数据库 | SQLite |
+| 数据库 | MySQL 8.0 |
 | 文件存储 | 本地文件系统 |
 
 ## 项目结构
@@ -128,15 +128,70 @@ ExecStart=/usr/bin/python3 /path/to/smph-book-manager/app.py
 Restart=always
 RestartSec=5
 
+# 数据库环境变量（根据实际情况修改）
+Environment=DB_HOST=localhost
+Environment=DB_PORT=3306
+Environment=DB_USER=copyright_user
+Environment=DB_PASSWORD=your_password
+Environment=DB_NAME=copyright_manager
+
 [Install]
 WantedBy=multi-user.target
 ```
 
 ## 数据库
 
-- 使用 SQLite 数据库，文件 `copyright_manager.db` 首次运行自动创建
-- **重要**：更新代码时请保留此文件，否则数据会丢失
-- **备份建议**：定期备份 `.db` 文件和 `uploads/` 文件夹
+- 使用 MySQL 8.0 数据库
+- 数据库名称：`copyright_manager`
+- 首次运行前请确保 MySQL 服务已启动并创建数据库
+
+### 数据库配置（环境变量）
+
+系统通过环境变量读取数据库配置，支持不同部署环境：
+
+| 环境变量 | 默认值 | 说明 |
+|---------|-------|------|
+| `DB_HOST` | localhost | MySQL服务器地址 |
+| `DB_PORT` | 3306 | MySQL端口 |
+| `DB_USER` | copyright_user | 数据库用户名 |
+| `DB_PASSWORD` | copyright123 | 数据库密码 |
+| `DB_NAME` | copyright_manager | 数据库名称 |
+
+### 首次部署 - 创建数据库
+
+```sql
+-- 1. 创建数据库
+CREATE DATABASE copyright_manager CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- 2. 创建用户并授权
+CREATE USER 'copyright_user'@'localhost' IDENTIFIED BY 'copyright123';
+GRANT ALL PRIVILEGES ON copyright_manager.* TO 'copyright_user'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+### 环境变量配置示例
+
+**Linux/Mac（生产环境）**：
+```bash
+# 设置环境变量
+export DB_HOST=localhost
+export DB_USER=your_user
+export DB_PASSWORD=your_password
+
+# 启动服务
+python app.py
+```
+
+**Windows**：
+```cmd
+set DB_HOST=localhost
+set DB_USER=your_user
+set DB_PASSWORD=your_password
+python app.py
+```
+
+**Docker / Railway**：
+在平台后台的环境变量配置中添加上述变量。
 
 ## ID格式说明
 
@@ -184,7 +239,7 @@ git pull
 # 重启服务
 sudo systemctl restart smph-book-manager
 
-# 注意：不要删除 .db 文件和 uploads/ 文件夹
+# 注意：数据库和 uploads/ 文件夹需要定期备份
 ```
 
 ## 数据关联说明
