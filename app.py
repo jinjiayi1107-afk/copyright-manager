@@ -16,17 +16,23 @@ from database import (
 app = Flask(__name__, static_folder='static')
 CORS(app)
 
-# 上传文件目录和配置
-UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads')
+# ==================== 文件上传配置 ====================
+# 使用Flask配置限制请求大小（10MB），超过会自动返回413错误
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
+
+# 上传文件存储目录（独立于项目目录）
+UPLOAD_FOLDER = '/data/uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# 允许的文件类型
-ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'doc', 'docx'}
-# 文件大小限制：10MB
-MAX_FILE_SIZE = 10 * 1024 * 1024
+# 允许的文件类型（白名单）
+ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'png', 'jpg'}
 
 def allowed_file(filename):
-    """检查文件类型是否允许"""
+    """
+    检查文件类型是否允许
+    参数：filename - 原始文件名
+    返回：True/False
+    """
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route('/')
@@ -498,74 +504,131 @@ def global_search():
 # ==================== 文件上传接口 ====================
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
-    """上传文件"""
+    """
+    上传文件接口
+    功能：接收文件、重命名、存储、返回文件ID
+    安全措施：类型白名单、大小限制（Flask自动处理）
+    """
     try:
+        # 检查是否有文件
         if 'file' not in request.files:
-            return jsonify({'success': False, 'error': '没有文件'})
+            return jsonify({'success': False, 'error': '没有选择文件'})
         
         file = request.files['file']
         if file.filename == '':
             return jsonify({'success': False, 'error': '文件名为空'})
         
-        # 检查文件类型
+        # 检查文件类型（白名单校验）
         if not allowed_file(file.filename):
-            return jsonify({'success': False, 'error': '不支持的文件类型，仅支持：PDF、图片(PNG/JPG)、Word文档'})
+            return jsonify({
+                'success': False, 
+                'error': '不支持的文件类型，仅支持：PDF、Word文档(doc/docx)、图片(png/jpg)'
+            })
         
-        # 检查文件大小
-        file.seek(0, 2)
-        file_size = file.tell()
-        file.seek(0)
-        if file_size > MAX_FILE_SIZE:
-            return jsonify({'success': False, 'error': '文件大小超过10MB限制'})
+        # 生成UUID文件名，保留原始扩展名
+        ext = os.path.splitext(file.filename)[1]  # 获取扩展名（如 .pdf）
+        file_id = uuid.uuid4().hex  # 生成32位UUID（无横杠）
+        filename = f"{file_id}{ext}"  # 完整文件名
         
-        # 生成唯一文件名
-        ext = os.path.splitext(file.filename)[1]
-        filename = f"{uuid.uuid4().hex}{ext}"
+        # 保存文件到指定目录
         filepath = os.path.join(UPLOAD_FOLDER, filename)
         file.save(filepath)
         
-        # 返回文件路径
-        file_url = f"/uploads/{filename}"
-        return jsonify({'success': True, 'filename': filename, 'url': file_url})
+        # 返回文件ID（不返回路径，前端只保存ID）
+        return jsonify({
+            'success': True, 
+            'file_id': file_id,  # 文件唯一标识（32位UUID）
+            'filename': filename  # 完整文件名（含扩展名）
+        })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
-@app.route('/uploads/<filename>')
-def serve_uploaded_file(filename):
-    """访问上传的文件"""
-    return send_from_directory(UPLOAD_FOLDER, filename)
-
-# ==================== 文件删除接口 ====================
-@app.route('/api/delete-file', methods=['POST'])
-def delete_file():
-    """删除上传的文件"""
+# ==================== 文件下载接口 ====================
+@app.route('/api/file/download', methods=['GET'])
+def download_file():
+    """
+    文件下载接口
+    参数：id - 文件ID（32位UUID）
+    功能：根据文件ID查找并返回文件，不暴露真实路径
+    安全措施：路径遍历防护、文件存在性检查
+    """
     try:
-        data = request.get_json()
-        file_path = data.get('file_path')
+        file_id = request.args.get('id')
         
-        if not file_path:
-            return jsonify({'success': False, 'error': '缺少文件路径'})
+        if not file_id:
+            return jsonify({'success': False, 'error': '缺少文件ID'})
         
-        # 安全检查：只允许删除uploads目录下的文件
-        # 防止路径遍历攻击
-        if '..' in file_path or file_path.startswith('/') or file_path.startswith('\\'):
-            return jsonify({'success': False, 'error': '非法文件路径'})
+        # 安全检查：文件ID必须是32位十六进制字符（UUID格式）
+        if not all(c in '0123456789abcdef' for c in file_id.lower()) or len(file_id) != 32:
+            return jsonify({'success': False, 'error': '非法的文件ID'})
         
-        # 完整文件路径
-        full_path = os.path.join(UPLOAD_FOLDER, file_path)
+        # 在上传目录中查找匹配的文件（ID相同，扩展名任意）
+        matched_file = None
+        for f in os.listdir(UPLOAD_FOLDER):
+            if f.startswith(file_id):
+                matched_file = f
+                break
         
-        # 检查文件是否存在
-        if not os.path.exists(full_path):
+        if not matched_file:
             return jsonify({'success': False, 'error': '文件不存在'})
         
-        # 检查文件是否在uploads目录内（防止目录遍历）
+        # 构建完整路径并验证安全性
+        file_path = os.path.join(UPLOAD_FOLDER, matched_file)
         real_upload_folder = os.path.realpath(UPLOAD_FOLDER)
-        real_file_path = os.path.realpath(full_path)
+        real_file_path = os.path.realpath(file_path)
+        
+        # 防止路径遍历攻击
         if not real_file_path.startswith(real_upload_folder):
-            return jsonify({'success': False, 'error': '非法文件路径'})
+            return jsonify({'success': False, 'error': '非法访问'})
+        
+        # 返回文件（自动设置Content-Type）
+        from flask import send_file
+        return send_file(file_path, as_attachment=True, download_name=matched_file)
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+# ==================== 文件删除接口 ====================
+@app.route('/api/file/delete', methods=['POST'])
+def delete_file():
+    """
+    文件删除接口
+    参数：id - 文件ID（32位UUID）
+    功能：根据文件ID删除文件
+    安全措施：路径遍历防护、文件存在性检查
+    """
+    try:
+        data = request.get_json()
+        file_id = data.get('id')
+        
+        if not file_id:
+            return jsonify({'success': False, 'error': '缺少文件ID'})
+        
+        # 安全检查：文件ID必须是32位十六进制字符（UUID格式）
+        if not all(c in '0123456789abcdef' for c in file_id.lower()) or len(file_id) != 32:
+            return jsonify({'success': False, 'error': '非法的文件ID'})
+        
+        # 在上传目录中查找匹配的文件
+        matched_file = None
+        for f in os.listdir(UPLOAD_FOLDER):
+            if f.startswith(file_id):
+                matched_file = f
+                break
+        
+        if not matched_file:
+            return jsonify({'success': False, 'error': '文件不存在'})
+        
+        # 构建完整路径并验证安全性
+        file_path = os.path.join(UPLOAD_FOLDER, matched_file)
+        real_upload_folder = os.path.realpath(UPLOAD_FOLDER)
+        real_file_path = os.path.realpath(file_path)
+        
+        # 防止路径遍历攻击
+        if not real_file_path.startswith(real_upload_folder):
+            return jsonify({'success': False, 'error': '非法访问'})
         
         # 删除文件
-        os.remove(full_path)
+        os.remove(file_path)
         
         return jsonify({'success': True, 'message': '文件删除成功'})
     except Exception as e:

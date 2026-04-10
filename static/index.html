@@ -196,10 +196,10 @@
                                     <td>{{ formatDate(book.updated_at) }}</td>
                                     <td>
                                         <div class="file-cell">
-                                            <a v-if="book.editor_sample_file" :href="'/uploads/' + book.editor_sample_file" target="_blank" class="file-link">📄样书</a>
+                                            <a v-if="book.editor_sample_file" :href="getFileDownloadUrl(book.editor_sample_file)" target="_blank" class="file-link">📄样书</a>
                                             <button v-if="book.editor_sample_file" class="btn-file-delete" @click="deleteFile('book', book.id, 'editor_sample_file', book.editor_sample_file, $event)" title="删除文件">×</button>
                                             <label class="btn btn-default btn-sm file-upload-btn">
-                                                <input type="file" @change="uploadBookFile(book.id, $event)" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" style="display:none;">
+                                                <input type="file" @change="uploadBookFile(book.id, $event)" accept=".pdf,.doc,.docx,.png,.jpg" style="display:none;">
                                                 {{ book.editor_sample_file ? '替换' : '上传' }}
                                             </label>
                                         </div>
@@ -282,10 +282,10 @@
                                     <td>{{ contract.sign_date }}</td>
                                     <td>
                                         <div class="file-cell">
-                                            <a v-if="contract.contract_file" :href="'/uploads/' + contract.contract_file" target="_blank" class="file-link">📎 已上传</a>
+                                            <a v-if="contract.contract_file" :href="getFileDownloadUrl(contract.contract_file)" target="_blank" class="file-link">📎 已上传</a>
                                             <button v-if="contract.contract_file" class="btn-file-delete" @click="deleteFile('contract', contract.id, 'contract_file', contract.contract_file, $event)" title="删除文件">×</button>
                                             <label class="btn btn-default btn-sm file-upload-btn">
-                                                <input type="file" @change="uploadContractFile(contract.id, $event)" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" style="display:none;">
+                                                <input type="file" @change="uploadContractFile(contract.id, $event)" accept=".pdf,.doc,.docx,.png,.jpg" style="display:none;">
                                                 {{ contract.contract_file ? '替换' : '上传合同' }}
                                             </label>
                                         </div>
@@ -439,12 +439,12 @@
                                     <td>{{ translator.contact_info || '-' }}</td>
                                     <td>
                                         <div class="file-cell">
-                                            <a v-if="translator.resume_file" :href="'/uploads/' + translator.resume_file" target="_blank" class="file-link">📄简历</a>
+                                            <a v-if="translator.resume_file" :href="getFileDownloadUrl(translator.resume_file)" target="_blank" class="file-link">📄简历</a>
                                             <button v-if="translator.resume_file" class="btn-file-delete" @click="deleteFile('translator', translator.id, 'resume_file', translator.resume_file, $event)" title="删除简历">×</button>
-                                            <a v-if="translator.contract_file" :href="'/uploads/' + translator.contract_file" target="_blank" class="file-link">📋合同</a>
+                                            <a v-if="translator.contract_file" :href="getFileDownloadUrl(translator.contract_file)" target="_blank" class="file-link">📋合同</a>
                                             <button v-if="translator.contract_file" class="btn-file-delete" @click="deleteFile('translator', translator.id, 'contract_file', translator.contract_file, $event)" title="删除合同">×</button>
                                             <label class="btn btn-default btn-sm file-upload-btn">
-                                                <input type="file" @change="uploadTranslatorFile(translator.id, $event)" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" style="display:none;">
+                                                <input type="file" @change="uploadTranslatorFile(translator.id, $event)" accept=".pdf,.doc,.docx,.png,.jpg" style="display:none;">
                                                 上传
                                             </label>
                                         </div>
@@ -907,7 +907,7 @@
                             <div class="form-group">
                                 <label>合同文件</label>
                                 <div class="file-upload-section">
-                                    <input type="file" ref="contractFileInput" @change="handleContractFileSelect" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" style="display:none;">
+                                    <input type="file" ref="contractFileInput" @change="handleContractFileSelect" accept=".pdf,.doc,.docx,.png,.jpg" style="display:none;">
                                     <div class="file-display" v-if="selectedContractFile">
                                         <span class="file-name">{{ selectedContractFile.name }}</span>
                                         <button type="button" class="btn-file-remove" @click="clearContractFile">×</button>
@@ -1003,7 +1003,7 @@
                             <div class="form-group">
                                 <label>简历文件</label>
                                 <div class="file-upload-section">
-                                    <input type="file" ref="resumeFileInput" @change="handleResumeFileSelect" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" style="display:none;">
+                                    <input type="file" ref="resumeFileInput" @change="handleResumeFileSelect" accept=".pdf,.doc,.docx,.png,.jpg" style="display:none;">
                                     <div class="file-display" v-if="selectedResumeFile">
                                         <span class="file-name">{{ selectedResumeFile.name }}</span>
                                         <button type="button" class="btn-file-remove" @click="clearResumeFile">×</button>

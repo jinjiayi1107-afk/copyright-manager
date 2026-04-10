@@ -1211,7 +1211,9 @@ createApp({
             if (!confirm('确定要删除这个文件吗？')) return;
             
             try {
-                const res = await api.post('/delete-file', { file_path: fileName });
+                // 从完整文件名中提取文件ID（去掉扩展名）
+                const fileId = fileName.split('.')[0];
+                const res = await api.post('/file/delete', { id: fileId });
                 
                 if (res.success) {
                     // 更新记录，移除文件字段
@@ -1243,6 +1245,14 @@ createApp({
             } catch (e) {
                 showToastMessage('删除失败: ' + e.message, 'error');
             }
+        }
+        
+        // 获取文件下载链接（通过接口下载，不暴露真实路径）
+        function getFileDownloadUrl(fileName) {
+            if (!fileName) return '';
+            // 从完整文件名中提取文件ID（去掉扩展名）
+            const fileId = fileName.split('.')[0];
+            return API_BASE + '/file/download?id=' + fileId;
         }
         
         // 监听页面切换
@@ -1364,6 +1374,7 @@ createApp({
             uploadBookFile,
             uploadTranslatorFile,
             deleteFile,
+            getFileDownloadUrl,
             updateSearchableSelectsFromData,
             
             // 文件选择处理
