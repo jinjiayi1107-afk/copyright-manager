@@ -70,20 +70,23 @@
 ## 项目结构
 
 ```
-smph-book-manager/
-├── app.py              # Flask 后端主文件
-├── database.py         # 数据库操作模块
-├── backup.sh           # 自动备份脚本
-├── requirements.txt    # Python 依赖
-├── Procfile            # Railway 部署配置
+copyright-manager/
+├── app.py                 # Flask 后端主文件
+├── database.py            # 数据库操作模块
+├── backup.sh              # 自动备份脚本
+├── requirements.txt       # Python 依赖
+├── gunicorn.conf.py       # Gunicorn配置文件
+├── copyright-manager.service  # systemd服务文件
+├── .env.example           # 环境变量示例
+├── Procfile               # Railway 部署配置
 ├── static/
-│   ├── index.html      # 主页面
-│   ├── css/style.css   # 样式文件
-│   ├── js/app.js       # 前端逻辑
-│   └── logo.png        # 系统Logo
+│   ├── index.html         # 主页面
+│   ├── css/style.css      # 样式文件
+│   ├── js/app.js          # 前端逻辑
+│   └── logo.png           # 系统Logo
 └── /data/
-    ├── uploads/        # 上传文件目录
-    └── backups/        # 备份文件目录
+    ├── uploads/           # 上传文件目录
+    └── backups/           # 备份文件目录
 ```
 
 ## 文件上传说明
@@ -127,49 +130,46 @@ python app.py
 # 本地: http://localhost:5001
 ```
 
-### 方式二：生产环境部署
+### 方式二：生产环境部署（Gunicorn）
 
 ```bash
 # 1. 安装依赖
 pip3 install -r requirements.txt
 
-# 2. 使用 systemd 托管（推荐）
-# 创建服务文件 /etc/systemd/system/smph-book-manager.service
-# 内容见下方"生产环境配置"
+# 2. 配置环境变量
+cp .env.example .env
+# 编辑.env文件，填写实际的数据库密码和ADMIN_TOKEN
 
-# 3. 启动服务
-sudo systemctl start smph-book-manager
-sudo systemctl enable smph-book-manager  # 开机自启
+# 3. 使用 systemd 托管（推荐）
+sudo cp copyright-manager.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl start copyright-manager
+sudo systemctl enable copyright-manager  # 开机自启
+
+# 4. 查看状态
+sudo systemctl status copyright-manager
 ```
 
-### 生产环境配置
+### Gunicorn vs Flask开发服务器
 
-创建 `/etc/systemd/system/smph-book-manager.service`：
+| 特性 | Flask开发服务器 | Gunicorn |
+|-----|---------------|----------|
+| 并发处理 | 单线程，一次一个请求 | 多Worker，支持并发 |
+| 稳定性 | 可能内存泄漏 | 自动重启Worker |
+| 性能 | 适合开发测试 | 生产级性能 |
+| 适用场景 | 开发调试 | 生产部署 |
 
-```ini
-[Unit]
-Description=SMPH Foreign Book Management System
-After=network.target
+### 生产环境配置文件
 
-[Service]
-Type=simple
-User=www-data
-WorkingDirectory=/path/to/smph-book-manager
-ExecStart=/usr/bin/python3 /path/to/smph-book-manager/app.py
-Restart=always
-RestartSec=5
+**gunicorn.conf.py**（已包含，无需修改）：
+- 自动根据CPU核心数设置Worker数量
+- 30秒超时，1000请求后重启Worker
+- 日志输出到stdout/stderr
 
-# 数据库环境变量（根据实际情况修改）
-Environment=DB_HOST=localhost
-Environment=DB_PORT=3306
-Environment=DB_USER=copyright_user
-Environment=DB_PASSWORD=your_password
-Environment=DB_NAME=copyright_manager
-Environment=ADMIN_TOKEN=your_secure_token_here
-
-[Install]
-WantedBy=multi-user.target
-```
+**copyright-manager.service**（需要修改路径）：
+- `WorkingDirectory`: 改为实际项目路径
+- `User/Group`: 改为实际运行用户
+- `EnvironmentFile`: 指向.env文件路径
 
 ## 数据库
 
