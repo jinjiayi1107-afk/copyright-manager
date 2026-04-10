@@ -309,15 +309,16 @@ def get_reminders():
     
     # 1. 合同到期提醒（30天内到期的执行中合同）
     cursor.execute('''
-        SELECT c.id, c.contract_name, c.end_date, fp.chinese_name as foreign_publisher_name,
-               DATEDIFF(c.end_date, %s) as days_left
+        SELECT id, contract_name, end_date, foreign_publisher_name,
+               DATEDIFF(end_date, %s) as days_left
         FROM contracts c
         LEFT JOIN foreign_publishers fp ON c.foreign_publisher_id = fp.id
-        WHERE c.end_date IS NOT NULL 
-          AND c.contract_status = '执行中'
-          AND c.end_date >= %s
-          AND c.end_date <= %s
-        ORDER BY c.end_date ASC
+        WHERE end_date IS NOT NULL 
+          AND end_date != ''
+          AND contract_status = '执行中'
+          AND end_date >= %s
+          AND end_date <= %s
+        ORDER BY end_date ASC
     ''', (today_str, today_str, thirty_days_later))
     
     for row in cursor.fetchall():
