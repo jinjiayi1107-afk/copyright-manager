@@ -171,7 +171,8 @@ WantedBy=multi-user.target
 
 - 使用 MySQL 8.0 数据库
 - 数据库名称：`copyright_manager`
-- 首次运行前请确保 MySQL 服务已启动并创建数据库
+- 使用pymysql连接，每次操作后自动关闭连接
+- 支持事务和异常处理
 
 ### 数据库配置（环境变量）
 
@@ -184,6 +185,12 @@ WantedBy=multi-user.target
 | `DB_USER` | copyright_user | 数据库用户名 |
 | `DB_PASSWORD` | copyright123 | 数据库密码 |
 | `DB_NAME` | copyright_manager | 数据库名称 |
+
+### 连接与事务
+
+- **连接管理**：每次数据库操作独立获取连接，操作完成后自动关闭
+- **事务支持**：写操作（增删改）使用事务，出错自动回滚
+- **异常处理**：所有操作捕获异常并打印错误日志，不会导致程序崩溃
 
 ### 首次部署 - 创建数据库
 
