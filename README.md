@@ -73,6 +73,7 @@
 smph-book-manager/
 ├── app.py              # Flask 后端主文件
 ├── database.py         # 数据库操作模块
+├── backup.sh           # 自动备份脚本
 ├── requirements.txt    # Python 依赖
 ├── Procfile            # Railway 部署配置
 ├── static/
@@ -80,7 +81,9 @@ smph-book-manager/
 │   ├── css/style.css   # 样式文件
 │   ├── js/app.js       # 前端逻辑
 │   └── logo.png        # 系统Logo
-└── /data/uploads/      # 上传文件目录（独立于项目）
+└── /data/
+    ├── uploads/        # 上传文件目录
+    └── backups/        # 备份文件目录
 ```
 
 ## 文件上传说明
@@ -275,6 +278,77 @@ git pull
 sudo systemctl restart smph-book-manager
 
 # 注意：数据库和 uploads/ 文件夹需要定期备份
+```
+
+## 自动备份
+
+系统提供自动备份脚本 `backup.sh`，支持备份MySQL数据库和上传文件。
+
+### 备份内容
+
+- MySQL数据库（使用mysqldump导出为.sql.gz文件）
+- 上传文件目录 `/data/uploads/`（打包为.tar.gz文件）
+
+### 手动执行备份
+
+```bash
+# 添加执行权限
+chmod +x backup.sh
+
+# 执行备份
+./backup.sh
+```
+
+### 定时自动备份（crontab）
+
+```bash
+# 编辑定时任务
+crontab -e
+
+# 添加以下内容（每天凌晨2点执行备份）
+0 2 * * * /path/to/backup.sh >> /data/backups/cron.log 2>&1
+```
+
+### 备份文件存储
+
+- 存储目录：`/data/backups/`
+- 命名格式：`2024-01-01_020000/`（日期_时间）
+- 自动清理：保留最近30天的备份
+
+### 配置修改
+
+编辑 `backup.sh` 文件顶部的配置区域：
+
+```bash
+# 数据库配置
+DB_HOST="localhost"
+DB_USER="copyright_user"
+DB_PASSWORD="your_password"
+DB_NAME="copyright_manager"
+
+# 备份目录
+BACKUP_ROOT="/data/backups"
+UPLOAD_DIR="/data/uploads"
+
+# 保留天数
+KEEP_DAYS=30
+```
+
+### 恢复数据
+
+**恢复数据库**：
+```bash
+# 解压备份文件
+gunzip database_2024-01-01_020000.sql.gz
+
+# 导入数据库
+mysql -u copyright_user -p copyright_manager < database_2024-01-01_020000.sql
+```
+
+**恢复上传文件**：
+```bash
+# 解压到上传目录
+tar -xzf uploads_2024-01-01_020000.tar.gz -C /data/uploads/
 ```
 
 ## 数据关联说明
