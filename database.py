@@ -9,13 +9,19 @@ from pymysql.cursors import DictCursor
 import os
 from datetime import datetime
 
-# 数据库配置
+# 数据库配置 - 从环境变量读取，支持不同部署环境
+# 使用方式：在部署环境中设置以下环境变量
+#   DB_HOST: MySQL服务器地址
+#   DB_PORT: MySQL端口（默认3306）
+#   DB_USER: 数据库用户名
+#   DB_PASSWORD: 数据库密码
+#   DB_NAME: 数据库名称
 DB_CONFIG = {
-    'host': 'localhost',
-    'port': 3306,
-    'user': 'copyright_user',
-    'password': 'copyright123',
-    'database': 'copyright_manager',
+    'host': os.environ.get('DB_HOST', 'localhost'),           # 默认本地
+    'port': int(os.environ.get('DB_PORT', 3306)),             # 默认3306端口
+    'user': os.environ.get('DB_USER', 'copyright_user'),      # 默认用户名
+    'password': os.environ.get('DB_PASSWORD', 'copyright123'), # 默认密码
+    'database': os.environ.get('DB_NAME', 'copyright_manager'), # 默认数据库名
     'charset': 'utf8mb4',
     'cursorclass': DictCursor
 }
