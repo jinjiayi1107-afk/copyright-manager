@@ -276,6 +276,7 @@ def get_contract(id):
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/contracts/<int:id>', methods=['PUT'])
+@require_admin_token
 def update_contract(id):
     """更新合同"""
     try:
@@ -344,6 +345,7 @@ def get_book(id):
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/books/<int:id>', methods=['PUT'])
+@require_admin_token
 def update_book(id):
     """更新图书"""
     try:

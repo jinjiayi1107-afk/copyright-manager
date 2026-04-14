@@ -17,50 +17,56 @@ ALLOWED_TABLES = {
     'contracts', 'books', 'royalties'
 }
 
-# 允许的排序字段（每个表的允许字段）
+# 允许的排序字段（每个表的允许字段，与建表SQL对齐）
 ALLOWED_ORDER_FIELDS = {
-    'topic_ideas': {'id', 'intention_date', 'created_at', 'updated_at'},
+    'topic_ideas': {'id', 'intention_date', 'intention_status', 'created_at', 'updated_at'},
     'foreign_publishers': {'id', 'original_name', 'country', 'created_at', 'updated_at'},
     'translators': {'id', 'name', 'languages', 'level', 'created_at', 'updated_at'},
     'contracts': {'id', 'contract_name', 'sign_date', 'end_date', 'contract_status', 'created_at', 'updated_at'},
     'books': {'id', 'original_title', 'chinese_title', 'book_status', 'created_at', 'updated_at'},
-    'royalties': {'id', 'contract_id', 'book_id', 'created_at', 'updated_at'}
+    'royalties': {'id', 'contract_id', 'book_id', 'last_payment_date', 'created_at', 'updated_at'}
 }
 
-# 允许的列名（每个表的允许字段，用于INSERT/UPDATE过滤）
+# 允许的列名（每个表的允许字段，用于INSERT/UPDATE过滤，与建表SQL对齐）
 ALLOWED_COLUMNS = {
     'topic_ideas': {
         'original_publisher_name', 'chinese_publisher_name', 'publisher_country',
-        'author_name', 'work_title', 'intention_date', 'status', 'notes',
+        'author_name', 'author_country', 'author_gender', 'sample_file',
+        'intention_date', 'intention_status', 'remarks',
         'created_at', 'updated_at'
     },
     'foreign_publishers': {
-        'original_name', 'chinese_name', 'country', 'contact_person',
-        'contact_email', 'contact_phone', 'address', 'notes',
-        'created_at', 'updated_at'
+        'original_name', 'chinese_name', 'country', 'sample_book_received',
+        'contact_name', 'contact_title', 'contact_email', 'has_multiple_contacts',
+        'remarks', 'created_at', 'updated_at'
     },
     'translators': {
-        'name', 'gender', 'languages', 'level', 'contact_info',
-        'resume_file', 'notes', 'created_at', 'updated_at'
+        'name', 'resume_file', 'languages', 'specialization', 'level',
+        'rate_per_thousand', 'contract_file', 'contract_date', 'contact_info',
+        'remarks', 'created_at', 'updated_at'
     },
     'contracts': {
-        'contract_name', 'foreign_publisher_id', 'related_book_count',
-        'sign_date', 'start_date', 'end_date', 'validity_type',
-        'validity_years', 'territory', 'language', 'exclusive_flag',
-        'advance_amount', 'royalty_type', 'fixed_royalty_rate',
-        'tiered_royalty_config', 'payment_terms', 'contract_status',
-        'contract_file', 'notes', 'created_at', 'updated_at'
+        'contract_name', 'contract_file', 'countersign_file', 'chinese_translation_file',
+        'related_book_count', 'start_date', 'end_date', 'sign_date', 'validity_years',
+        'validity_type', 'auto_renewal', 'agent_id', 'commission_fee', 'foreign_publisher_id',
+        'authorization_scope', 'translator_id', 'advance_payment', 'advance_paid',
+        'royalty_type', 'royalty_rate', 'tiered_royalty', 'first_print_quantity',
+        'first_print_requirement', 'editor_id', 'book_number', 'contract_status',
+        'remarks', 'created_at', 'updated_at'
     },
     'books': {
-        'contract_id', 'original_title', 'chinese_title', 'author_name',
-        'publisher_name', 'publisher_country', 'reference_price',
-        'translator_id', 'book_status', 'print_run', 'first_print_date',
-        'editor_sample_file', 'notes', 'created_at', 'updated_at'
+        'contract_id', 'original_title', 'chinese_title', 'publisher_name',
+        'publisher_country', 'translator_id', 'translator_languages', 'book_number',
+        'sample_sent', 'reference_price', 'actual_price', 'contract_reference_price',
+        'contract_actual_price', 'editor_sample_file', 'review_sample_file',
+        'quotation_file', 'contract_scan_file', 'countersign_file', 'book_status',
+        'remarks', 'created_at', 'updated_at'
     },
     'royalties': {
-        'contract_id', 'book_id', 'royalty_type', 'fixed_rate',
-        'tiered_config', 'advance_paid', 'total_paid', 'last_payment_date',
-        'notes', 'created_at', 'updated_at'
+        'contract_id', 'book_id', 'royalty_type', 'royalty_rate', 'tiered_structure',
+        'advance_amount', 'advance_paid', 'payment_cycle', 'last_payment_date',
+        'total_paid_amount', 'report_date', 'payment_reminder', 'remarks',
+        'created_at', 'updated_at'
     }
 }
 
