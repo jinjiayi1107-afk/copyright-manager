@@ -149,6 +149,7 @@ def get_foreign_publisher(id):
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/foreign-publishers/<int:id>', methods=['PUT'])
+@require_admin_token
 def update_foreign_publisher(id):
     """更新外商"""
     try:
@@ -183,6 +184,7 @@ def get_translators():
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/translators', methods=['POST'])
+@require_admin_token
 def create_translator():
     """创建译者"""
     try:
@@ -250,6 +252,7 @@ def get_contracts():
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/contracts', methods=['POST'])
+@require_admin_token
 def create_contract():
     """创建合同"""
     try:
@@ -311,6 +314,7 @@ def get_books():
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/books', methods=['POST'])
+@require_admin_token
 def create_book():
     """创建图书"""
     try:
@@ -380,6 +384,7 @@ def get_topic_ideas():
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/topic-ideas', methods=['POST'])
+@require_admin_token
 def create_topic_idea():
     """创建意向选题"""
     try:
@@ -466,6 +471,7 @@ def get_royalty(id):
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/royalties/<int:id>', methods=['PUT'])
+@require_admin_token
 def update_royalty(id):
     """更新版税"""
     try:
