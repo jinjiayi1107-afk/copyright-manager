@@ -27,11 +27,55 @@ ALLOWED_ORDER_FIELDS = {
     'royalties': {'id', 'contract_id', 'book_id', 'created_at', 'updated_at'}
 }
 
+# 允许的列名（每个表的允许字段，用于INSERT/UPDATE过滤）
+ALLOWED_COLUMNS = {
+    'topic_ideas': {
+        'original_publisher_name', 'chinese_publisher_name', 'publisher_country',
+        'author_name', 'work_title', 'intention_date', 'status', 'notes',
+        'created_at', 'updated_at'
+    },
+    'foreign_publishers': {
+        'original_name', 'chinese_name', 'country', 'contact_person',
+        'contact_email', 'contact_phone', 'address', 'notes',
+        'created_at', 'updated_at'
+    },
+    'translators': {
+        'name', 'gender', 'languages', 'level', 'contact_info',
+        'resume_file', 'notes', 'created_at', 'updated_at'
+    },
+    'contracts': {
+        'contract_name', 'foreign_publisher_id', 'related_book_count',
+        'sign_date', 'start_date', 'end_date', 'validity_type',
+        'validity_years', 'territory', 'language', 'exclusive_flag',
+        'advance_amount', 'royalty_type', 'fixed_royalty_rate',
+        'tiered_royalty_config', 'payment_terms', 'contract_status',
+        'contract_file', 'notes', 'created_at', 'updated_at'
+    },
+    'books': {
+        'contract_id', 'original_title', 'chinese_title', 'author_name',
+        'publisher_name', 'publisher_country', 'reference_price',
+        'translator_id', 'book_status', 'print_run', 'first_print_date',
+        'editor_sample_file', 'notes', 'created_at', 'updated_at'
+    },
+    'royalties': {
+        'contract_id', 'book_id', 'royalty_type', 'fixed_rate',
+        'tiered_config', 'advance_paid', 'total_paid', 'last_payment_date',
+        'notes', 'created_at', 'updated_at'
+    }
+}
+
 def validate_table(table):
     """验证表名是否在白名单中"""
     if table not in ALLOWED_TABLES:
         raise ValueError(f"非法的表名: {table}")
     return True
+
+def filter_columns(table, data):
+    """过滤数据，只保留允许的列名"""
+    if table not in ALLOWED_COLUMNS:
+        return {}
+    allowed = ALLOWED_COLUMNS[table]
+    return {k: v for k, v in data.items() if k in allowed}
 
 def validate_order_by(table, order_by):
     """验证排序字段是否合法"""
@@ -57,11 +101,16 @@ def validate_order_by(table, order_by):
 
 # ==================== 数据库配置 ====================
 # 从环境变量读取配置，支持不同部署环境
+# 密码必须通过环境变量设置，不允许默认值
+_db_password = os.environ.get('DB_PASSWORD')
+if not _db_password:
+    raise ValueError("数据库密码未设置，请配置环境变量 DB_PASSWORD")
+
 DB_CONFIG = {
     'host': os.environ.get('DB_HOST', 'localhost'),
     'port': int(os.environ.get('DB_PORT', 3306)),
     'user': os.environ.get('DB_USER', 'copyright_user'),
-    'password': os.environ.get('DB_PASSWORD', 'copyright123'),
+    'password': _db_password,
     'database': os.environ.get('DB_NAME', 'copyright_manager'),
     'charset': 'utf8mb4',
     'cursorclass': DictCursor
@@ -283,11 +332,17 @@ def create_record(table, data):
         data['created_at'] = now
         data['updated_at'] = now
         
-        columns = ', '.join(data.keys())
-        placeholders = ', '.join(['%s' for _ in data])
+        # 过滤非法列名
+        filtered_data = filter_columns(table, data)
+        if not filtered_data:
+            print(f"[数据库错误] 无有效字段")
+            return None
+        
+        columns = ', '.join(filtered_data.keys())
+        placeholders = ', '.join(['%s' for _ in filtered_data])
         sql = f'INSERT INTO {table} ({columns}) VALUES ({placeholders})'
         
-        cursor.execute(sql, list(data.values()))
+        cursor.execute(sql, list(filtered_data.values()))
         conn.commit()
         
         return cursor.lastrowid
@@ -425,10 +480,17 @@ def update_record(table, record_id, data):
     
     try:
         data['updated_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        set_clause = ', '.join([f'{key} = %s' for key in data.keys()])
+        
+        # 过滤非法列名
+        filtered_data = filter_columns(table, data)
+        if not filtered_data:
+            print(f"[数据库错误] 无有效字段")
+            return False
+        
+        set_clause = ', '.join([f'{key} = %s' for key in filtered_data.keys()])
         sql = f'UPDATE {table} SET {set_clause} WHERE id = %s'
         
-        cursor.execute(sql, list(data.values()) + [record_id])
+        cursor.execute(sql, list(filtered_data.values()) + [record_id])
         conn.commit()
         return cursor.rowcount > 0
         

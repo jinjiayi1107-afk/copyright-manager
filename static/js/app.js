@@ -280,16 +280,24 @@ createApp({
         // API基础路径
         const API_BASE = '/api';
         
+        // 管理员Token（内网环境，可按需修改）
+        const ADMIN_TOKEN = 'smph_admin_2026';
+        
         // 工具函数
         const api = {
             async get(url) {
-                const res = await fetch(API_BASE + url);
+                const res = await fetch(API_BASE + url, {
+                    headers: { 'X-ADMIN-TOKEN': ADMIN_TOKEN }
+                });
                 return res.json();
             },
             async post(url, data) {
                 const res = await fetch(API_BASE + url, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-ADMIN-TOKEN': ADMIN_TOKEN 
+                    },
                     body: JSON.stringify(data)
                 });
                 return res.json();
@@ -297,13 +305,19 @@ createApp({
             async put(url, data) {
                 const res = await fetch(API_BASE + url, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-ADMIN-TOKEN': ADMIN_TOKEN 
+                    },
                     body: JSON.stringify(data)
                 });
                 return res.json();
             },
             async delete(url) {
-                const res = await fetch(API_BASE + url, { method: 'DELETE' });
+                const res = await fetch(API_BASE + url, { 
+                    method: 'DELETE',
+                    headers: { 'X-ADMIN-TOKEN': ADMIN_TOKEN }
+                });
                 return res.json();
             }
         };
@@ -1183,14 +1197,9 @@ createApp({
                 const data = await res.json();
                 
                 if (data.success) {
-                    // 判断是简历还是合同（根据是否有现有文件）
-                    const translator = translators.value.find(t => t.id === translatorId);
-                    const updateData = translator && translator.resume_file 
-                        ? { contract_file: data.filename } 
-                        : { resume_file: data.filename };
-                    // 更新译者记录
-                    await api.put(`/translators/${translatorId}`, updateData);
-                    showToastMessage('文件上传成功');
+                    // 始终更新简历文件（用户上传意图是替换简历）
+                    await api.put(`/translators/${translatorId}`, { resume_file: data.filename });
+                    showToastMessage('简历上传成功');
                     // 刷新译者列表
                     await loadTranslators();
                 } else {

@@ -347,6 +347,11 @@ body {
     color: #999;
 }
 
+.status-tag.warning {
+    background: linear-gradient(135deg, #fffbe6 0%, #fff1b8 100%);
+    color: #d48806;
+}
+
 /* 表单样式 */
 .form-container {
     background: var(--card-bg);

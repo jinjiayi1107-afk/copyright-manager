@@ -122,6 +122,7 @@ def get_foreign_publishers():
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/foreign-publishers', methods=['POST'])
+@require_admin_token
 def create_foreign_publisher():
     """创建外商"""
     try:
@@ -208,6 +209,7 @@ def get_translator(id):
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/translators/<int:id>', methods=['PUT'])
+@require_admin_token
 def update_translator(id):
     """更新译者"""
     try:
@@ -402,6 +404,7 @@ def get_topic_idea(id):
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/topic-ideas/<int:id>', methods=['PUT'])
+@require_admin_token
 def update_topic_idea(id):
     """更新意向选题"""
     try:
@@ -434,6 +437,7 @@ def get_royalties():
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/royalties', methods=['POST'])
+@require_admin_token
 def create_royalty():
     """创建版税"""
     try:
@@ -496,15 +500,16 @@ def global_search():
         # 搜索外版图书档案
         books = get_records('books', order_by='id DESC')
         for book in books:
-            if (keyword_lower in str(book.get('publisher_name', '') or '').lower() or
-                keyword_lower in str(book.get('contract_name', '') or '').lower() or
+            if (keyword_lower in str(book.get('original_title', '') or '').lower() or
+                keyword_lower in str(book.get('chinese_title', '') or '').lower() or
+                keyword_lower in str(book.get('publisher_name', '') or '').lower() or
                 keyword_lower in str(book.get('publisher_country', '') or '').lower()):
                 results.append({
                     'type': 'book',
                     'typeName': '图书档案',
                     'id': book['id'],
-                    'title': book.get('publisher_name', '') or book.get('contract_name', ''),
-                    'subtitle': book.get('contract_name', ''),
+                    'title': book.get('chinese_title', '') or book.get('original_title', ''),
+                    'subtitle': book.get('publisher_name', ''),
                     'status': book.get('book_status', '')
                 })
         

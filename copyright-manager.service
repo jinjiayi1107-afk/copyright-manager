@@ -52,8 +52,8 @@ RestartSec=5
 StandardOutput=journal
 StandardError=journal
 
-# 进程类型
-Type=notify
+# 进程类型（Gunicorn不支持notify，使用simple）
+Type=simple
 
 # 优雅关闭超时
 TimeoutStopSec=30
