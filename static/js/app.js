@@ -1103,6 +1103,7 @@ createApp({
                 
                 const res = await fetch(API_BASE + '/upload', {
                     method: 'POST',
+                    headers: { 'X-ADMIN-TOKEN': ADMIN_TOKEN },
                     body: formData
                 });
                 const data = await res.json();
@@ -1134,6 +1135,7 @@ createApp({
                 
                 const res = await fetch(API_BASE + '/upload', {
                     method: 'POST',
+                    headers: { 'X-ADMIN-TOKEN': ADMIN_TOKEN },
                     body: formData
                 });
                 const data = await res.json();
@@ -1163,6 +1165,7 @@ createApp({
                 
                 const res = await fetch(API_BASE + '/upload', {
                     method: 'POST',
+                    headers: { 'X-ADMIN-TOKEN': ADMIN_TOKEN },
                     body: formData
                 });
                 const data = await res.json();
@@ -1192,6 +1195,7 @@ createApp({
                 
                 const res = await fetch(API_BASE + '/upload', {
                     method: 'POST',
+                    headers: { 'X-ADMIN-TOKEN': ADMIN_TOKEN },
                     body: formData
                 });
                 const data = await res.json();
@@ -1261,7 +1265,7 @@ createApp({
             if (!fileName) return '';
             // 从完整文件名中提取文件ID（去掉扩展名）
             const fileId = fileName.split('.')[0];
-            return API_BASE + '/file/download?id=' + fileId;
+            return API_BASE + '/file/download?id=' + fileId + '&token=' + ADMIN_TOKEN;
         }
         
         // 监听页面切换

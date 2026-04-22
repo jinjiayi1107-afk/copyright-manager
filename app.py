@@ -31,7 +31,7 @@ PROTECTED_PREFIXES = ('/api/foreign-publishers', '/api/translators', '/api/contr
 def require_admin_token(f):
     """
     Token验证装饰器
-    验证请求头中的 X-ADMIN-TOKEN 是否与环境变量中的 ADMIN_TOKEN 匹配
+    验证请求头中的 X-ADMIN-TOKEN 或 URL参数中的 token 是否与环境变量中的 ADMIN_TOKEN 匹配
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -42,13 +42,13 @@ def require_admin_token(f):
                 'error': '服务器未配置访问令牌，请联系管理员'
             }), 500
         
-        # 获取请求头中的token
-        token = request.headers.get('X-ADMIN-TOKEN')
+        # 优先从请求头获取token，其次从URL参数获取
+        token = request.headers.get('X-ADMIN-TOKEN') or request.args.get('token')
         
         if not token:
             return jsonify({
                 'success': False, 
-                'error': '缺少访问令牌，请在请求头中添加 X-ADMIN-TOKEN'
+                'error': '缺少访问令牌，请在请求头中添加 X-ADMIN-TOKEN 或在URL中添加 token 参数'
             }), 401
         
         if token != ADMIN_TOKEN:
@@ -133,6 +133,8 @@ def create_foreign_publisher():
                 return jsonify({'success': False, 'error': f'缺少必填字段: {field}'})
         
         record_id = create_record('foreign_publishers', data)
+        if record_id is None:
+            return jsonify({'success': False, 'error': '创建失败，请检查数据库连接或字段格式'})
         return jsonify({'success': True, 'id': record_id})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
@@ -154,8 +156,10 @@ def update_foreign_publisher(id):
     """更新外商"""
     try:
         data = request.json
-        update_record('foreign_publishers', id, data)
-        return jsonify({'success': True})
+        result = update_record('foreign_publishers', id, data)
+        if result:
+            return jsonify({'success': True})
+        return jsonify({'success': False, 'error': '更新失败，记录不存在或数据库错误'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
@@ -195,6 +199,8 @@ def create_translator():
             return jsonify({'success': False, 'error': '缺少必填字段: 语种'})
         
         record_id = create_record('translators', data)
+        if record_id is None:
+            return jsonify({'success': False, 'error': '创建失败，请检查数据库连接或字段格式'})
         return jsonify({'success': True, 'id': record_id})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
@@ -216,8 +222,10 @@ def update_translator(id):
     """更新译者"""
     try:
         data = request.json
-        update_record('translators', id, data)
-        return jsonify({'success': True})
+        result = update_record('translators', id, data)
+        if result:
+            return jsonify({'success': True})
+        return jsonify({'success': False, 'error': '更新失败，记录不存在或数据库错误'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
@@ -263,6 +271,8 @@ def create_contract():
                 return jsonify({'success': False, 'error': f'缺少必填字段: {field}'})
         
         record_id = create_record('contracts', data)
+        if record_id is None:
+            return jsonify({'success': False, 'error': '创建失败，请检查数据库连接或字段格式'})
         return jsonify({'success': True, 'id': record_id})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
@@ -284,8 +294,10 @@ def update_contract(id):
     """更新合同"""
     try:
         data = request.json
-        update_record('contracts', id, data)
-        return jsonify({'success': True})
+        result = update_record('contracts', id, data)
+        if result:
+            return jsonify({'success': True})
+        return jsonify({'success': False, 'error': '更新失败，记录不存在或数据库错误'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
@@ -333,6 +345,8 @@ def create_book():
             return jsonify({'success': False, 'error': '缺少必填字段: 参考定价'})
         
         record_id = create_record('books', data)
+        if record_id is None:
+            return jsonify({'success': False, 'error': '创建失败，请检查数据库连接或字段格式'})
         return jsonify({'success': True, 'id': record_id})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
@@ -354,8 +368,10 @@ def update_book(id):
     """更新图书"""
     try:
         data = request.json
-        update_record('books', id, data)
-        return jsonify({'success': True})
+        result = update_record('books', id, data)
+        if result:
+            return jsonify({'success': True})
+        return jsonify({'success': False, 'error': '更新失败，记录不存在或数据库错误'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
@@ -395,6 +411,8 @@ def create_topic_idea():
                 return jsonify({'success': False, 'error': f'缺少必填字段: {field}'})
         
         record_id = create_record('topic_ideas', data)
+        if record_id is None:
+            return jsonify({'success': False, 'error': '创建失败，请检查数据库连接或字段格式'})
         return jsonify({'success': True, 'id': record_id})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
@@ -416,8 +434,10 @@ def update_topic_idea(id):
     """更新意向选题"""
     try:
         data = request.json
-        update_record('topic_ideas', id, data)
-        return jsonify({'success': True})
+        result = update_record('topic_ideas', id, data)
+        if result:
+            return jsonify({'success': True})
+        return jsonify({'success': False, 'error': '更新失败，记录不存在或数据库错误'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
@@ -455,6 +475,8 @@ def create_royalty():
                 return jsonify({'success': False, 'error': f'缺少必填字段: {field}'})
         
         record_id = create_record('royalties', data)
+        if record_id is None:
+            return jsonify({'success': False, 'error': '创建失败，请检查数据库连接或字段格式'})
         return jsonify({'success': True, 'id': record_id})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
@@ -476,8 +498,10 @@ def update_royalty(id):
     """更新版税"""
     try:
         data = request.json
-        update_record('royalties', id, data)
-        return jsonify({'success': True})
+        result = update_record('royalties', id, data)
+        if result:
+            return jsonify({'success': True})
+        return jsonify({'success': False, 'error': '更新失败，记录不存在或数据库错误'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 

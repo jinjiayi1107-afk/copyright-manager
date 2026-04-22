@@ -291,8 +291,90 @@ set ADMIN_TOKEN=your_token
 python app.py
 ```
 
-**Docker / Railway**：
-在平台后台的环境变量配置中添加上述变量。
+**Docker Compose 部署**：
+详见下文"Docker部署"章节。
+
+## Docker 部署
+
+### 环境变量配置（必填）
+
+Docker部署时需要在 `docker-compose.yml` 或容器环境中配置以下环境变量：
+
+| 环境变量 | 说明 | 示例值 | 备注 |
+|---------|------|--------|------|
+| `DB_HOST` | MySQL服务器地址 | `mysql` | Docker内部使用服务名 |
+| `DB_PORT` | MySQL端口 | `3306` | |
+| `DB_USER` | 数据库用户名 | `copyright_user` | |
+| `DB_PASSWORD` | 数据库密码 | `your_password` | **必填，无默认值** |
+| `DB_NAME` | 数据库名称 | `copyright_manager` | |
+| `ADMIN_TOKEN` | 管理员访问令牌 | `smph_admin_2026` | **必填，前端硬编码为此值** |
+
+### 重要说明
+
+⚠️ **ADMIN_TOKEN 必须设置为 `smph_admin_2026`**
+
+前端代码中硬编码了Token值（`static/js/app.js` 第284行），后端的 `ADMIN_TOKEN` 环境变量必须与此值一致，否则所有写操作（创建、更新、删除、文件上传）都会返回"访问令牌无效"错误。
+
+### Docker Compose 示例
+
+```yaml
+version: '3.8'
+services:
+  app:
+    image: your-image
+    ports:
+      - "5000:5000"
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=copyright_user
+      - DB_PASSWORD=your_password
+      - DB_NAME=copyright_manager
+      - ADMIN_TOKEN=smph_admin_2026  # 必须使用此值！
+    volumes:
+      - /data/uploads:/data/uploads
+    depends_on:
+      - mysql
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_password
+      - MYSQL_DATABASE=copyright_manager
+      - MYSQL_USER=copyright_user
+      - MYSQL_PASSWORD=your_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:
+```
+
+### 部署步骤
+
+```bash
+# 1. 克隆代码
+git clone https://github.com/your-repo/copyright-manager.git
+cd copyright-manager
+
+# 2. 配置环境变量（确保 ADMIN_TOKEN=smph_admin_2026）
+
+# 3. 启动服务
+docker-compose up -d
+
+# 4. 查看日志
+docker-compose logs -f app
+```
+
+### 更新部署
+
+```bash
+# 拉取最新代码
+git pull
+
+# 重启应用容器
+docker-compose restart app
+```
 
 ## ID格式说明
 
