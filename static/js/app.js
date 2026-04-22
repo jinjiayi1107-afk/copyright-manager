@@ -914,7 +914,9 @@ createApp({
             try {
                 const res = await api.get(`${endpoint}/${id}`);
                 if (res.success) {
-                    formData.value = { ...res.data };
+                    // 过滤掉时间字段，避免格式兼容问题
+                    const { created_at, updated_at, ...rest } = res.data;
+                    formData.value = { ...rest };
                     
                     // 初始化可搜索下拉框（编辑模式）
                     nextTick(() => {
