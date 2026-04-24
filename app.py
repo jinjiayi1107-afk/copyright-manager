@@ -18,7 +18,20 @@ from database import (
 )
 
 app = Flask(__name__, static_folder='static')
-CORS(app)
+
+# CORS 配置：从环境变量读取允许的域名，未设置则允许所有（开发环境）
+ALLOWED_ORIGINS = os.environ.get('ALLOWED_ORIGINS', '')
+if ALLOWED_ORIGINS:
+    CORS(app, origins=[origin.strip() for origin in ALLOWED_ORIGINS.split(',')])
+else:
+    CORS(app)  # 开发环境或未配置时允许所有来源
+
+# 是否为调试模式（影响错误信息详细程度）
+DEBUG_MODE = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
+
+def safe_error(e, default_msg='服务器内部错误'):
+    """安全错误信息：调试模式返回详细信息，生产环境返回通用信息"""
+    return str(e) if DEBUG_MODE else default_msg
 
 # ==================== 安全配置 ====================
 # 管理员访问令牌（从环境变量读取，必填）
@@ -78,13 +91,14 @@ def index():
     return send_from_directory('static', 'index.html')
 
 @app.route('/api/init', methods=['POST'])
+@require_admin_token
 def initialize():
     """初始化数据库"""
     try:
         init_db()
         return jsonify({'success': True, 'message': '数据库初始化成功'})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': safe_error(e, '数据库初始化失败')})
 
 # ==================== 统计接口 ====================
 @app.route('/api/statistics', methods=['GET'])
@@ -94,7 +108,7 @@ def statistics():
         stats = get_statistics()
         return jsonify({'success': True, 'data': stats})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': safe_error(e)})
 
 # ==================== 提醒接口 ====================
 @app.route('/api/reminders', methods=['GET'])
@@ -111,7 +125,7 @@ def get_all_reminders():
         }
         return jsonify({'success': True, 'data': reminders, 'counts': counts})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': safe_error(e)})
 
 # ==================== 外商库接口 ====================
 @app.route('/api/foreign-publishers', methods=['GET'])
@@ -121,7 +135,7 @@ def get_foreign_publishers():
         records = get_records('foreign_publishers', order_by='id DESC')
         return jsonify({'success': True, 'data': records})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': safe_error(e)})
 
 @app.route('/api/foreign-publishers', methods=['POST'])
 @require_admin_token
@@ -139,7 +153,7 @@ def create_foreign_publisher():
             return jsonify({'success': False, 'error': '创建失败，请检查数据库连接或字段格式'})
         return jsonify({'success': True, 'id': record_id})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': safe_error(e)})
 
 @app.route('/api/foreign-publishers/<int:id>', methods=['GET'])
 def get_foreign_publisher(id):
@@ -150,7 +164,7 @@ def get_foreign_publisher(id):
             return jsonify({'success': True, 'data': record})
         return jsonify({'success': False, 'error': '记录不存在'})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': safe_error(e)})
 
 @app.route('/api/foreign-publishers/<int:id>', methods=['PUT'])
 @require_admin_token
@@ -163,7 +177,7 @@ def update_foreign_publisher(id):
             return jsonify({'success': True})
         return jsonify({'success': False, 'error': '更新失败，记录不存在或数据库错误'})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': safe_error(e)})
 
 @app.route('/api/foreign-publishers/<int:id>', methods=['DELETE'])
 @require_admin_token
@@ -187,7 +201,7 @@ def get_translators():
         records = get_records('translators', order_by='id DESC')
         return jsonify({'success': True, 'data': records})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': safe_error(e)})
 
 @app.route('/api/translators', methods=['POST'])
 @require_admin_token
@@ -205,7 +219,7 @@ def create_translator():
             return jsonify({'success': False, 'error': '创建失败，请检查数据库连接或字段格式'})
         return jsonify({'success': True, 'id': record_id})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': safe_error(e)})
 
 @app.route('/api/translators/<int:id>', methods=['GET'])
 def get_translator(id):
@@ -216,7 +230,7 @@ def get_translator(id):
             return jsonify({'success': True, 'data': record})
         return jsonify({'success': False, 'error': '记录不存在'})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': safe_error(e)})
 
 @app.route('/api/translators/<int:id>', methods=['PUT'])
 @require_admin_token
@@ -229,7 +243,7 @@ def update_translator(id):
             return jsonify({'success': True})
         return jsonify({'success': False, 'error': '更新失败，记录不存在或数据库错误'})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': safe_error(e)})
 
 @app.route('/api/translators/<int:id>', methods=['DELETE'])
 @require_admin_token
@@ -264,7 +278,7 @@ def get_contracts():
         
         return jsonify({'success': True, 'data': records})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': safe_error(e)})
 
 @app.route('/api/contracts', methods=['POST'])
 @require_admin_token
@@ -282,7 +296,7 @@ def create_contract():
             return jsonify({'success': False, 'error': '创建失败，请检查数据库连接或字段格式'})
         return jsonify({'success': True, 'id': record_id})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': safe_error(e)})
 
 @app.route('/api/contracts/<int:id>', methods=['GET'])
 def get_contract(id):
@@ -293,7 +307,7 @@ def get_contract(id):
             return jsonify({'success': True, 'data': record})
         return jsonify({'success': False, 'error': '记录不存在'})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': safe_error(e)})
 
 @app.route('/api/contracts/<int:id>', methods=['PUT'])
 @require_admin_token
@@ -306,7 +320,7 @@ def update_contract(id):
             return jsonify({'success': True})
         return jsonify({'success': False, 'error': '更新失败，记录不存在或数据库错误'})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': safe_error(e)})
 
 @app.route('/api/contracts/<int:id>', methods=['DELETE'])
 @require_admin_token
@@ -330,7 +344,7 @@ def get_books():
         records = get_records('books', order_by='id DESC')
         return jsonify({'success': True, 'data': records})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': safe_error(e)})
 
 @app.route('/api/books', methods=['POST'])
 @require_admin_token
@@ -356,7 +370,7 @@ def create_book():
             return jsonify({'success': False, 'error': '创建失败，请检查数据库连接或字段格式'})
         return jsonify({'success': True, 'id': record_id})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': safe_error(e)})
 
 @app.route('/api/books/<int:id>', methods=['GET'])
 def get_book(id):
@@ -367,7 +381,7 @@ def get_book(id):
             return jsonify({'success': True, 'data': record})
         return jsonify({'success': False, 'error': '记录不存在'})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': safe_error(e)})
 
 @app.route('/api/books/<int:id>', methods=['PUT'])
 @require_admin_token
@@ -380,7 +394,7 @@ def update_book(id):
             return jsonify({'success': True})
         return jsonify({'success': False, 'error': '更新失败，记录不存在或数据库错误'})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': safe_error(e)})
 
 @app.route('/api/books/<int:id>', methods=['DELETE'])
 @require_admin_token
@@ -404,7 +418,7 @@ def get_topic_ideas():
         records = get_records('topic_ideas', order_by='id DESC')
         return jsonify({'success': True, 'data': records})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': safe_error(e)})
 
 @app.route('/api/topic-ideas', methods=['POST'])
 @require_admin_token
@@ -422,7 +436,7 @@ def create_topic_idea():
             return jsonify({'success': False, 'error': '创建失败，请检查数据库连接或字段格式'})
         return jsonify({'success': True, 'id': record_id})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': safe_error(e)})
 
 @app.route('/api/topic-ideas/<int:id>', methods=['GET'])
 def get_topic_idea(id):
@@ -433,7 +447,7 @@ def get_topic_idea(id):
             return jsonify({'success': True, 'data': record})
         return jsonify({'success': False, 'error': '记录不存在'})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': safe_error(e)})
 
 @app.route('/api/topic-ideas/<int:id>', methods=['PUT'])
 @require_admin_token
@@ -446,7 +460,7 @@ def update_topic_idea(id):
             return jsonify({'success': True})
         return jsonify({'success': False, 'error': '更新失败，记录不存在或数据库错误'})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': safe_error(e)})
 
 @app.route('/api/topic-ideas/<int:id>', methods=['DELETE'])
 @require_admin_token
@@ -468,7 +482,7 @@ def get_royalties():
         records = get_records('royalties', order_by='id DESC')
         return jsonify({'success': True, 'data': records})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': safe_error(e)})
 
 @app.route('/api/royalties', methods=['POST'])
 @require_admin_token
@@ -486,7 +500,7 @@ def create_royalty():
             return jsonify({'success': False, 'error': '创建失败，请检查数据库连接或字段格式'})
         return jsonify({'success': True, 'id': record_id})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': safe_error(e)})
 
 @app.route('/api/royalties/<int:id>', methods=['GET'])
 def get_royalty(id):
@@ -497,7 +511,7 @@ def get_royalty(id):
             return jsonify({'success': True, 'data': record})
         return jsonify({'success': False, 'error': '记录不存在'})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': safe_error(e)})
 
 @app.route('/api/royalties/<int:id>', methods=['PUT'])
 @require_admin_token
@@ -510,7 +524,7 @@ def update_royalty(id):
             return jsonify({'success': True})
         return jsonify({'success': False, 'error': '更新失败，记录不存在或数据库错误'})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': safe_error(e)})
 
 @app.route('/api/royalties/<int:id>', methods=['DELETE'])
 @require_admin_token
@@ -608,7 +622,7 @@ def global_search():
         
         return jsonify({'success': True, 'data': results})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': safe_error(e)})
 
 # ==================== 文件上传接口 ====================
 @app.route('/api/upload', methods=['POST'])
@@ -651,7 +665,7 @@ def upload_file():
             'filename': filename  # 完整文件名（含扩展名）
         })
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': safe_error(e)})
 
 # ==================== 文件下载接口 ====================
 @app.route('/api/file/download', methods=['GET'])
@@ -695,7 +709,7 @@ def download_file():
         return send_file(file_path, as_attachment=True, download_name=original_filename)
         
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': safe_error(e)})
 
 # ==================== 文件删除接口 ====================
 @app.route('/api/file/delete', methods=['POST'])
@@ -737,7 +751,7 @@ def delete_file():
         
         return jsonify({'success': True, 'message': '文件删除成功'})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': safe_error(e)})
 
 # ==================== 枚举值接口 ====================
 @app.route('/api/enums', methods=['GET'])
