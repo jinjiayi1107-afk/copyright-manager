@@ -8,7 +8,9 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from functools import wraps
 import os
+import hmac
 import uuid
+import json
 from datetime import datetime
 from database import (
     init_db, create_record, get_records, get_record_by_id,
@@ -51,7 +53,7 @@ def require_admin_token(f):
                 'error': '缺少访问令牌，请在请求头中添加 X-ADMIN-TOKEN 或在URL中添加 token 参数'
             }), 401
         
-        if token != ADMIN_TOKEN:
+        if not hmac.compare_digest(token, ADMIN_TOKEN):
             return jsonify({
                 'success': False, 
                 'error': '访问令牌无效'
@@ -65,6 +67,22 @@ app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 最大10MB
 UPLOAD_FOLDER = '/data/uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'png', 'jpg'}
+FILE_NAMES_MAP = os.path.join(UPLOAD_FOLDER, 'file_names.json')
+
+def get_file_names_map():
+    """读取文件名映射"""
+    if os.path.exists(FILE_NAMES_MAP):
+        try:
+            with open(FILE_NAMES_MAP, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
+
+def save_file_names_map(name_map):
+    """保存文件名映射"""
+    with open(FILE_NAMES_MAP, 'w', encoding='utf-8') as f:
+        json.dump(name_map, f, ensure_ascii=False, indent=2)
 
 def allowed_file(filename):
     """检查文件类型是否允许"""
@@ -249,12 +267,18 @@ def get_contracts():
     """获取合同列表"""
     try:
         records = get_records('contracts', order_by='id DESC')
-        # 补充外商名称
-        for record in records:
-            if record.get('foreign_publisher_id'):
-                publisher = get_record_by_id('foreign_publishers', record['foreign_publisher_id'])
-                if publisher:
-                    record['foreign_publisher_name'] = publisher.get('chinese_name') or publisher.get('original_name')
+        
+        # 批量获取外商信息，避免N+1查询
+        publisher_ids = [r['foreign_publisher_id'] for r in records if r.get('foreign_publisher_id')]
+        if publisher_ids:
+            # 获取所有相关外商
+            all_publishers = get_records('foreign_publishers')
+            pub_map = {p['id']: p for p in all_publishers}
+            for record in records:
+                if record.get('foreign_publisher_id') and record['foreign_publisher_id'] in pub_map:
+                    p = pub_map[record['foreign_publisher_id']]
+                    record['foreign_publisher_name'] = p.get('chinese_name') or p.get('original_name')
+        
         return jsonify({'success': True, 'data': records})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
@@ -547,13 +571,17 @@ def global_search():
         
         # 搜索合同管理
         contracts = get_records('contracts', order_by='id DESC')
+        
+        # 批量获取外商信息，避免N+1查询
+        all_publishers = get_records('foreign_publishers')
+        pub_map = {p['id']: p for p in all_publishers}
+        
         for contract in contracts:
-            # 获取外商名称
+            # 从映射中获取外商名称
             publisher_name = ''
-            if contract.get('foreign_publisher_id'):
-                publisher = get_record_by_id('foreign_publishers', contract['foreign_publisher_id'])
-                if publisher:
-                    publisher_name = publisher.get('chinese_name') or publisher.get('original_name', '')
+            if contract.get('foreign_publisher_id') and contract['foreign_publisher_id'] in pub_map:
+                p = pub_map[contract['foreign_publisher_id']]
+                publisher_name = p.get('chinese_name') or p.get('original_name', '')
             
             if (keyword_lower in str(contract.get('contract_name', '') or '').lower() or
                 keyword_lower in publisher_name.lower()):
@@ -629,6 +657,12 @@ def upload_file():
         filepath = os.path.join(UPLOAD_FOLDER, filename)
         file.save(filepath)
         
+        # 保存原始文件名映射
+        original_filename = os.path.basename(file.filename)  # 原始文件名
+        name_map = get_file_names_map()
+        name_map[file_id] = original_filename
+        save_file_names_map(name_map)
+        
         # 返回文件ID（不返回路径，前端只保存ID）
         return jsonify({
             'success': True, 
@@ -672,9 +706,13 @@ def download_file():
         if not real_file_path.startswith(real_upload_folder):
             return jsonify({'success': False, 'error': '非法访问'})
         
-        # 返回文件（自动设置Content-Type）
+        # 获取原始文件名（如果存在映射）
+        name_map = get_file_names_map()
+        original_filename = name_map.get(file_id, matched_file)
+        
+        # 返回文件（自动设置Content-Type），使用原始文件名
         from flask import send_file
-        return send_file(file_path, as_attachment=True, download_name=matched_file)
+        return send_file(file_path, as_attachment=True, download_name=original_filename)
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
