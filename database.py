@@ -302,6 +302,15 @@ def init_db():
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ''')
         
+        # 7. 文件上传记录
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS file_uploads (
+                file_id CHAR(32) PRIMARY KEY,
+                original_filename VARCHAR(255) NOT NULL,
+                uploaded_at DATETIME NOT NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ''')
+        
         conn.commit()
         print("[数据库] 初始化完成")
         return True
@@ -731,6 +740,62 @@ def get_reminders():
     except Exception as e:
         print(f"[数据库错误] 获取提醒失败: {e}")
         return []
+    finally:
+        cursor.close()
+        conn.close()
+
+# ==================== 文件上传记录 ====================
+def save_file_record(file_id, original_filename):
+    """
+    保存文件上传记录
+    参数：file_id - 文件ID（32位UUID）, original_filename - 原始文件名
+    返回：True（成功）或 False（失败）
+    """
+    conn = get_db_connection()
+    if not conn:
+        return False
+    
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute(
+            'INSERT INTO file_uploads (file_id, original_filename, uploaded_at) VALUES (%s, %s, %s)',
+            (file_id, original_filename, datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        )
+        conn.commit()
+        return True
+        
+    except Exception as e:
+        conn.rollback()
+        print(f"[数据库错误] 保存文件记录失败: {e}")
+        return False
+    finally:
+        cursor.close()
+        conn.close()
+
+def get_original_filename(file_id):
+    """
+    获取文件的原始文件名
+    参数：file_id - 文件ID（32位UUID）
+    返回：原始文件名或 None
+    """
+    conn = get_db_connection()
+    if not conn:
+        return None
+    
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute(
+            'SELECT original_filename FROM file_uploads WHERE file_id = %s',
+            (file_id,)
+        )
+        row = cursor.fetchone()
+        return row['original_filename'] if row else None
+        
+    except Exception as e:
+        print(f"[数据库错误] 查询文件名失败: {e}")
+        return None
     finally:
         cursor.close()
         conn.close()

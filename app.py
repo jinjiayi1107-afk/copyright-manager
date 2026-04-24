@@ -10,11 +10,11 @@ from functools import wraps
 import os
 import hmac
 import uuid
-import json
 from datetime import datetime
 from database import (
     init_db, create_record, get_records, get_record_by_id,
-    update_record, delete_record, get_statistics, get_reminders
+    update_record, delete_record, get_statistics, get_reminders,
+    save_file_record, get_original_filename
 )
 
 app = Flask(__name__, static_folder='static')
@@ -67,22 +67,6 @@ app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 最大10MB
 UPLOAD_FOLDER = '/data/uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'png', 'jpg'}
-FILE_NAMES_MAP = os.path.join(UPLOAD_FOLDER, 'file_names.json')
-
-def get_file_names_map():
-    """读取文件名映射"""
-    if os.path.exists(FILE_NAMES_MAP):
-        try:
-            with open(FILE_NAMES_MAP, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except:
-            return {}
-    return {}
-
-def save_file_names_map(name_map):
-    """保存文件名映射"""
-    with open(FILE_NAMES_MAP, 'w', encoding='utf-8') as f:
-        json.dump(name_map, f, ensure_ascii=False, indent=2)
 
 def allowed_file(filename):
     """检查文件类型是否允许"""
@@ -268,16 +252,15 @@ def get_contracts():
     try:
         records = get_records('contracts', order_by='id DESC')
         
-        # 批量获取外商信息，避免N+1查询
-        publisher_ids = [r['foreign_publisher_id'] for r in records if r.get('foreign_publisher_id')]
-        if publisher_ids:
-            # 获取所有相关外商
-            all_publishers = get_records('foreign_publishers')
-            pub_map = {p['id']: p for p in all_publishers}
-            for record in records:
-                if record.get('foreign_publisher_id') and record['foreign_publisher_id'] in pub_map:
-                    p = pub_map[record['foreign_publisher_id']]
-                    record['foreign_publisher_name'] = p.get('chinese_name') or p.get('original_name')
+        # 批量获取外商信息，避免N+1查询（无条件构建映射，逻辑更清晰）
+        all_publishers = get_records('foreign_publishers')
+        pub_map = {p['id']: p for p in all_publishers}
+        
+        for record in records:
+            pid = record.get('foreign_publisher_id')
+            if pid and pid in pub_map:
+                p = pub_map[pid]
+                record['foreign_publisher_name'] = p.get('chinese_name') or p.get('original_name')
         
         return jsonify({'success': True, 'data': records})
     except Exception as e:
@@ -657,11 +640,9 @@ def upload_file():
         filepath = os.path.join(UPLOAD_FOLDER, filename)
         file.save(filepath)
         
-        # 保存原始文件名映射
-        original_filename = os.path.basename(file.filename)  # 原始文件名
-        name_map = get_file_names_map()
-        name_map[file_id] = original_filename
-        save_file_names_map(name_map)
+        # 保存原始文件名到数据库
+        original_filename = os.path.basename(file.filename)
+        save_file_record(file_id, original_filename)
         
         # 返回文件ID（不返回路径，前端只保存ID）
         return jsonify({
@@ -706,9 +687,8 @@ def download_file():
         if not real_file_path.startswith(real_upload_folder):
             return jsonify({'success': False, 'error': '非法访问'})
         
-        # 获取原始文件名（如果存在映射）
-        name_map = get_file_names_map()
-        original_filename = name_map.get(file_id, matched_file)
+        # 从数据库获取原始文件名，若无记录则使用UUID文件名
+        original_filename = get_original_filename(file_id) or matched_file
         
         # 返回文件（自动设置Content-Type），使用原始文件名
         from flask import send_file
