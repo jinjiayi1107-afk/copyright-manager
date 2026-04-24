@@ -977,8 +977,15 @@ createApp({
         async function deleteRecord(table, id) {
             if (!confirm('确定要删除这条记录吗？')) return;
             
+            // 表名到API路径的映射（统一用横杠）
+            const endpointMap = {
+                'foreign_publishers': 'foreign-publishers',
+                'topic_ideas': 'topic-ideas'
+            };
+            const endpoint = endpointMap[table] || table;
+            
             try {
-                const res = await api.delete(`/${table}/${id}`);
+                const res = await api.delete(`/${endpoint}/${id}`);
                 if (res.success) {
                     showToastMessage('删除成功');
                     loadAllData();
