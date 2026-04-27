@@ -264,7 +264,8 @@ body {
     background: var(--card-bg);
     border-radius: 12px;
     box-shadow: var(--shadow);
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 
 .table {
