@@ -709,7 +709,7 @@ createApp({
         }
         
         function renderTopicChart() {
-            const chartDom = document.getElementById('topicChart') || document.querySelector('[ref="topicChart"]');
+            const chartDom = topicChart.value;
             if (!chartDom) return;
             
             const chart = echarts.init(chartDom);
@@ -1401,7 +1401,6 @@ createApp({
             closeDetailModal,
             handleGlobalSearch,
             navigateToResult,
-            searchBooks,
             goToReminder,
             uploadContractFile,
             uploadBookFile,

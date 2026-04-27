@@ -509,7 +509,6 @@ select.form-input {
 
 /* 表格行双击效果 */
 .table tbody tr {
-    cursor: pointer;
     transition: background-color 0.2s;
 }
 

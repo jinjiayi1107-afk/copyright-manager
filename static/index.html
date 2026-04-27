@@ -27,31 +27,31 @@
         <div class="container">
             <!-- 侧边导航 -->
             <nav class="sidebar" :class="{active: sidebarOpen}">
-                <div class="nav-item" :class="{active: currentPage === 'dashboard'}" @click="currentPage = 'dashboard'">
+                <div class="nav-item" :class="{active: currentPage === 'dashboard'}" @click="currentPage = 'dashboard'; sidebarOpen = false">
                     <span class="icon">📊</span>
                     <span>数据看板</span>
                 </div>
-                <div class="nav-item" :class="{active: currentPage === 'books'}" @click="currentPage = 'books'">
+                <div class="nav-item" :class="{active: currentPage === 'books'}" @click="currentPage = 'books'; sidebarOpen = false">
                     <span class="icon">📚</span>
                     <span>外版图书档案</span>
                 </div>
-                <div class="nav-item" :class="{active: currentPage === 'contracts'}" @click="currentPage = 'contracts'">
+                <div class="nav-item" :class="{active: currentPage === 'contracts'}" @click="currentPage = 'contracts'; sidebarOpen = false">
                     <span class="icon">📄</span>
                     <span>合同管理</span>
                 </div>
-                <div class="nav-item" :class="{active: currentPage === 'foreignPublishers'}" @click="currentPage = 'foreignPublishers'">
+                <div class="nav-item" :class="{active: currentPage === 'foreignPublishers'}" @click="currentPage = 'foreignPublishers'; sidebarOpen = false">
                     <span class="icon">🏢</span>
                     <span>外商库</span>
                 </div>
-                <div class="nav-item" :class="{active: currentPage === 'translators'}" @click="currentPage = 'translators'">
+                <div class="nav-item" :class="{active: currentPage === 'translators'}" @click="currentPage = 'translators'; sidebarOpen = false">
                     <span class="icon">👤</span>
                     <span>译者库</span>
                 </div>
-                <div class="nav-item" :class="{active: currentPage === 'topicIdeas'}" @click="currentPage = 'topicIdeas'">
+                <div class="nav-item" :class="{active: currentPage === 'topicIdeas'}" @click="currentPage = 'topicIdeas'; sidebarOpen = false">
                     <span class="icon">💡</span>
                     <span>意向选题库</span>
                 </div>
-                <div class="nav-item" :class="{active: currentPage === 'royalties'}" @click="currentPage = 'royalties'">
+                <div class="nav-item" :class="{active: currentPage === 'royalties'}" @click="currentPage = 'royalties'; sidebarOpen = false">
                     <span class="icon">💰</span>
                     <span>版税管理</span>
                 </div>
@@ -1144,7 +1144,7 @@
         <div class="modal-overlay" :class="{active: showDetailModal}" @click.self="closeDetailModal">
             <div class="modal">
                 <div class="modal-header">
-                    <h3 class="modal-title">详情信息</h3>
+                    <h3 class="modal-title">{{ {'books':'📚 图书档案详情','contracts':'📄 合同详情','foreignPublishers':'🏢 外商详情','translators':'👤 译者详情','topicIdeas':'💡 意向选题详情','royalties':'💰 版税详情'}[getRecordType()] || '详情信息' }}</h3>
                     <button class="modal-close" @click="closeDetailModal">&times;</button>
                 </div>
                 <div class="modal-body">
