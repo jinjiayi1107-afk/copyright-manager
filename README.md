@@ -1,6 +1,6 @@
 # SMPH外版图书管理系统
 
-一个基于 Flask + Vue.js 的出版社外版图书版权管理系统。
+一个基于 Flask + Vue.js 的出版社外版图书版权管理系统，支持移动端访问。
 
 ## 功能模块
 
@@ -22,7 +22,21 @@
 - ✅ 状态管理和流转
 - ✅ 数据统计看板 + 图表可视化
 - ✅ 表单验证
-- ✅ 响应式布局
+- ✅ **响应式布局**（支持移动端访问）
+
+#### 移动端适配（v2.0新增）
+- ✅ **汉堡菜单按钮**（移动端显示，桌面端隐藏）
+- ✅ **侧边栏滑入效果**（点击菜单按钮滑出导航）
+- ✅ **遮罩层关闭**（点击遮罩区域关闭侧边栏）
+- ✅ **表格横向滚动**（窄屏时表格整体滚动，不压缩列宽）
+- ✅ **统计卡片自适应**（移动端2列，桌面端4列）
+- ✅ **弹窗适配**（移动端宽度95%，高度限制85vh）
+- ✅ **表单单列布局**（移动端表单项纵向排列）
+
+#### 表格优化（v2.0新增）
+- ✅ **横向滚动**（表格超出容器时整体滚动）
+- ✅ **最小列宽设置**（防止内容换行堆叠）
+- ✅ **各模块独立配置**（根据内容特点设置合理宽度）
 
 #### 检索功能
 - ✅ **全局检索**（数据看板一键搜索所有模块）
@@ -56,7 +70,7 @@
 - ✅ **双击展开详情**（表格行双击显示完整信息）
 - ✅ **ID格式化**（Book_0001、Contract_0001等）
 - ✅ **修改记录追踪**（显示创建/修改时间）
-- ✅ 浅蓝色主题UI
+- ✅ 浅蓝色主题UI（#5B9BD5）
 
 ## 技术栈
 
@@ -81,7 +95,7 @@ copyright-manager/
 ├── Procfile               # Railway 部署配置
 ├── static/
 │   ├── index.html         # 主页面
-│   ├── css/style.css      # 样式文件
+│   ├── css/style.css      # 样式文件（含移动端适配）
 │   ├── js/app.js          # 前端逻辑
 │   └── logo.png           # 系统Logo
 └── /data/
@@ -234,19 +248,6 @@ export ADMIN_TOKEN=your_secure_token_here
 | 文件下载 | `/api/file/download` |
 | 文件删除 | `/api/file/delete` |
 
-### 前端配置示例
-
-```javascript
-// 在请求头中添加Token
-fetch('/api/upload', {
-    method: 'POST',
-    headers: {
-        'X-ADMIN-TOKEN': 'your_secure_token_here'
-    },
-    body: formData
-})
-```
-
 ### 删除策略
 
 系统使用外键约束，删除时会检查关联数据：
@@ -257,42 +258,6 @@ fetch('/api/upload', {
 | 译者 | 合同引用 | "该译者有关联合同，无法删除" |
 | 合同 | 图书/版税引用 | "该合同有关联图书或版税，无法删除" |
 | 图书 | 版税引用 | "该图书有关联版税，无法删除" |
-
-### 环境变量配置示例
-
-**Linux/Mac（开发环境）**：
-```bash
-# 设置环境变量
-export DB_HOST=localhost
-export DB_USER=your_user
-export DB_PASSWORD=your_password
-export ADMIN_TOKEN=your_token
-
-# 启动开发服务器
-python app.py
-```
-
-**Linux/Mac（生产环境）**：
-```bash
-# 创建.env文件
-cp .env.example .env
-# 编辑.env填写实际配置
-
-# 使用Gunicorn启动
-gunicorn -c gunicorn.conf.py app:app
-```
-
-**Windows**：
-```cmd
-set DB_HOST=localhost
-set DB_USER=your_user
-set DB_PASSWORD=your_password
-set ADMIN_TOKEN=your_token
-python app.py
-```
-
-**Docker Compose 部署**：
-详见下文"Docker部署"章节。
 
 ## Docker 部署
 
@@ -313,7 +278,7 @@ Docker部署时需要在 `docker-compose.yml` 或容器环境中配置以下环�
 
 ⚠️ **ADMIN_TOKEN 必须设置为 `smph_admin_2026`**
 
-前端代码中硬编码了Token值（`static/js/app.js` 第284行），后端的 `ADMIN_TOKEN` 环境变量必须与此值一致，否则所有写操作（创建、更新、删除、文件上传）都会返回"访问令牌无效"错误。
+前端代码中硬编码了Token值，后端的 `ADMIN_TOKEN` 环境变量必须与此值一致，否则所有写操作都会返回"访问令牌无效"错误。
 
 ### Docker Compose 示例
 
@@ -330,7 +295,7 @@ services:
       - DB_USER=copyright_user
       - DB_PASSWORD=your_password
       - DB_NAME=copyright_manager
-      - ADMIN_TOKEN=smph_admin_2026  # 必须使用此值！
+      - ADMIN_TOKEN=smph_admin_2026
     volumes:
       - /data/uploads:/data/uploads
     depends_on:
@@ -348,32 +313,6 @@ services:
 
 volumes:
   mysql_data:
-```
-
-### 部署步骤
-
-```bash
-# 1. 克隆代码
-git clone https://github.com/your-repo/copyright-manager.git
-cd copyright-manager
-
-# 2. 配置环境变量（确保 ADMIN_TOKEN=smph_admin_2026）
-
-# 3. 启动服务
-docker-compose up -d
-
-# 4. 查看日志
-docker-compose logs -f app
-```
-
-### 更新部署
-
-```bash
-# 拉取最新代码
-git pull
-
-# 重启应用容器
-docker-compose restart app
 ```
 
 ## ID格式说明
@@ -451,7 +390,6 @@ chmod +x backup.sh
 crontab -e
 
 # 添加以下内容（每天凌晨2点执行备份）
-# 注意：需要设置数据库密码环境变量
 0 2 * * * export DB_PASSWORD=your_password && /path/to/backup.sh >> /data/backups/cron.log 2>&1
 ```
 
@@ -461,53 +399,29 @@ crontab -e
 - 命名格式：`2024-01-01_020000/`（日期_时间）
 - 自动清理：保留最近30天的备份
 
-### 配置修改
-
-备份脚本从环境变量读取数据库密码（与database.py一致），无需修改脚本：
-
-```bash
-# 必须设置的环境变量
-export DB_PASSWORD=your_password
-
-# 可选的环境变量（有默认值）
-export DB_HOST=localhost
-export DB_USER=copyright_user
-export DB_NAME=copyright_manager
-export BACKUP_ROOT=/data/backups
-export UPLOAD_DIR=/data/uploads
-```
-
 ### 恢复数据
 
 **恢复数据库**：
 ```bash
-# 解压备份文件
 gunzip database_2024-01-01_020000.sql.gz
-
-# 导入数据库
 mysql -u copyright_user -p copyright_manager < database_2024-01-01_020000.sql
 ```
 
 **恢复上传文件**：
 ```bash
-# 解压到上传目录
 tar -xzf uploads_2024-01-01_020000.tar.gz -C /data/uploads/
 ```
 
-## 数据关联说明
+## 版本历史
 
-- **图书 ↔ 合同**：多对一关系，一本书对应一个合同，一个合同可对应多本书
-- **合同 ↔ 外商**：多对一关系
-- **合同/图书 ↔ 译者**：关联译者库
+### v2.0 (2026-04-27)
+- ✨ 新增移动端适配（汉堡菜单、侧边栏滑入、响应式布局）
+- ✨ 表格横向滚动 + 最小列宽优化
+- 🐛 修复遮罩层z-index约束问题
 
-## 后续开发规划
-
-- [ ] AI 合同信息提取（本地大模型）
-- [ ] 批量报表导出（Excel）
-- [ ] 用户权限管理
-- [ ] 编辑系统对接
-- [ ] 老系统数据迁移
-
-## License
-
-MIT License
+### v1.0
+- ✅ 核心模块CRUD功能
+- ✅ 文件上传下载
+- ✅ 提醒功能
+- ✅ 全局检索
+- ✅ 数据看板可视化
