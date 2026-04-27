@@ -82,6 +82,9 @@ createApp({
         // 双击展开详情状态
         const expandedRowId = ref(null);
         
+        // 移动端侧边栏状态
+        const sidebarOpen = ref(false);
+        
         // 消息提示
         const showToast = ref(false);
         const toastMessage = ref('');
@@ -1036,6 +1039,10 @@ createApp({
             detailData.value = null;
         }
         
+        function toggleSidebar() {
+            sidebarOpen.value = !sidebarOpen.value;
+        }
+        
         // 全局搜索处理
         let searchTimeout = null;
         async function handleGlobalSearch() {
@@ -1337,6 +1344,10 @@ createApp({
             // 详情展开
             expandedRowId,
             toggleRowDetail,
+            
+            // 移动端侧边栏
+            sidebarOpen,
+            toggleSidebar,
             
             // 阶梯版税
             tieredTiers,

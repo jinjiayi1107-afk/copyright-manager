@@ -1019,77 +1019,6 @@ select.form-input {
     border-left: 4px solid var(--error-color);
 }
 
-/* 响应式布局 */
-@media (max-width: 768px) {
-    .header {
-        padding: 0 16px;
-    }
-    
-    .header h1 {
-        font-size: 16px;
-    }
-    
-    .sidebar {
-        position: fixed;
-        left: -220px;
-        top: 64px;
-        height: calc(100vh - 64px);
-        z-index: 99;
-        transition: left 0.3s;
-    }
-    
-    .sidebar.active {
-        left: 0;
-    }
-    
-    .main-content {
-        padding: 16px;
-    }
-    
-    .stats-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
-    }
-    
-    .stat-card {
-        padding: 16px;
-    }
-    
-    .stat-card .stat-value {
-        font-size: 24px;
-    }
-    
-    .form-row {
-        grid-template-columns: 1fr;
-    }
-    
-    .chart-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .global-search {
-        width: 100%;
-    }
-    
-    .table {
-        font-size: 12px;
-    }
-    
-    .table th,
-    .table td {
-        padding: 10px 8px;
-    }
-    
-    .action-buttons {
-        flex-direction: column;
-        gap: 4px;
-    }
-    
-    .tier-fields {
-        grid-template-columns: 1fr;
-    }
-}
-
 /* 卡片悬浮效果增强 */
 .stat-card:hover .stat-icon {
     transform: scale(1.1);
@@ -1326,4 +1255,136 @@ select.form-input {
 
 .btn-file-remove:hover {
     background: #fff1f0;
+}
+
+
+/* ===== 移动端适配补全 ===== */
+/* 汉堡菜单按钮（桌面端隐藏） */
+.hamburger-btn {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+.hamburger-btn span {
+    display: block;
+    width: 22px;
+    height: 2px;
+    background: var(--primary-color);
+    border-radius: 2px;
+    transition: transform 0.3s, opacity 0.3s;
+}
+
+/* 侧边栏遮罩 */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 98;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+/* 移动端媒体查询 */
+@media (max-width: 768px) {
+    /* 显示汉堡按钮 */
+    .hamburger-btn {
+        display: flex;
+    }
+    /* 遮罩层在移动端可见 */
+    .sidebar-overlay {
+        display: block;
+    }
+    .sidebar-overlay.active {
+        opacity: 1;
+        pointer-events: auto;
+    }
+    /* 侧边栏默认隐藏，active时滑入 */
+    .sidebar {
+        position: fixed;
+        left: -220px;
+        top: 64px;
+        height: calc(100vh - 64px);
+        z-index: 99;
+        transition: left 0.3s;
+        overflow-y: auto;
+    }
+    .sidebar.active {
+        left: 0;
+    }
+    /* 主内容区占满全宽 */
+    .main-content {
+        width: 100%;
+        padding: 16px;
+        margin-left: 0 !important;
+    }
+    /* 页头：标题和搜索框换行排列 */
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    .page-header .btn {
+        width: 100%;
+        text-align: center;
+    }
+    /* 数据看板全局搜索占满宽度 */
+    .global-search {
+        width: 100%;
+        max-width: 100%;
+    }
+    /* 弹窗在小屏幕适配 */
+    .modal {
+        width: 95%;
+        max-height: 85vh;
+        border-radius: 12px;
+    }
+    .modal-body {
+        max-height: 60vh;
+        padding: 16px;
+    }
+    /* 表格字体和内间距缩小 */
+    .table {
+        font-size: 12px;
+    }
+    .table th,
+    .table td {
+        padding: 10px 8px;
+    }
+    /* 操作按钮纵向排列 */
+    .action-buttons {
+        flex-direction: column;
+        gap: 4px;
+    }
+    /* 统计卡片2列 */
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+    /* 表单单列 */
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    /* 图表单列 */
+    .chart-grid {
+        grid-template-columns: 1fr;
+    }
+    /* 阶梯版税单列 */
+    .tier-fields {
+        grid-template-columns: 1fr;
+    }
+    /* 详情展开网格单列 */
+    .detail-expand-grid {
+        grid-template-columns: 1fr;
+    }
+    .detail-item.full-width {
+        grid-column: span 1;
+    }
 }

@@ -12,6 +12,11 @@
     <div id="app" @click="closeAllSearchableSelects">
         <!-- 顶部导航栏 -->
         <header class="header">
+            <button class="hamburger-btn" @click="toggleSidebar">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
             <div class="logo-area">
                 <img src="/static/logo.png" alt="Logo" class="logo-img">
                 <h1>SMPH外版图书管理系统</h1>
@@ -21,7 +26,7 @@
 
         <div class="container">
             <!-- 侧边导航 -->
-            <nav class="sidebar">
+            <nav class="sidebar" :class="{active: sidebarOpen}">
                 <div class="nav-item" :class="{active: currentPage === 'dashboard'}" @click="currentPage = 'dashboard'">
                     <span class="icon">📊</span>
                     <span>数据看板</span>
@@ -50,6 +55,7 @@
                     <span class="icon">💰</span>
                     <span>版税管理</span>
                 </div>
+                <div class="sidebar-overlay" :class="{active: sidebarOpen}" @click="sidebarOpen = false"></div>
             </nav>
 
             <!-- 主内容区 -->
