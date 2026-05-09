@@ -104,13 +104,43 @@ createApp({
         let chartSignature = '';
         let resizeTimer = null;
         let enumsLoaded = false;
+
+        const STATUS_CLASS_MAP = {
+            '待洽谈': 'pending',
+            '洽谈中': 'negotiating',
+            '已签约': 'signed',
+            '已放弃': 'abandoned',
+            '意向阶段': 'pending',
+            '合同签约阶段': 'negotiating',
+            '翻译中': 'negotiating',
+            '编辑中': 'negotiating',
+            '已出版': 'signed',
+            '近期需续约': 'warning',
+            '已过期': 'expired',
+            '已废弃': 'abandoned'
+        };
+
+        const CONTRACT_STATUS_CLASS_MAP = {
+            '草稿': 'draft',
+            '已签约': 'signed',
+            '执行中': 'active',
+            '已到期': 'expired',
+            '已作废': 'void'
+        };
+
+        const CHART_PALETTES = {
+            books: ['#55AFF5', '#0B6FB3', '#7BC7F8', '#F59E0B', '#16A34A', '#DC2626', '#64748B', '#8B5CF6'],
+            contracts: ['#94A3B8', '#55AFF5', '#16A34A', '#F59E0B', '#DC2626'],
+            topics: ['#F59E0B', '#55AFF5', '#16A34A', '#DC2626'],
+            empty: ['#E2E8F0']
+        };
         
         // 可搜索下拉框状态管理
         const searchableSelects = ref({});
         const activeSelectId = ref(null);
         
         // 初始化可搜索下拉框
-        function initSearchableSelect(id, options, selectedValue, placeholder) {
+        function initSearchableSelect(id, options, selectedValue, placeholder, onChange = null) {
             searchableSelects.value[id] = {
                 options: options,
                 filteredOptions: [...options],
@@ -118,7 +148,8 @@ createApp({
                 selectedValue: selectedValue || '',
                 placeholder: placeholder || '请选择',
                 highlightedIndex: -1,
-                isOpen: false
+                isOpen: false,
+                onChange
             };
         }
         
@@ -231,6 +262,36 @@ createApp({
             if (!select) return;
             select.options = options;
             select.filteredOptions = [...options];
+        }
+
+        function getPublisherInfoByContractId(contractId) {
+            const contract = contracts.value.find(c => String(c.id) === String(contractId));
+            if (!contract) return { name: '', country: '' };
+
+            const publisher = foreignPublishers.value.find(p => String(p.id) === String(contract.foreign_publisher_id));
+            return {
+                name: contract.foreign_publisher_name || publisher?.chinese_name || publisher?.original_name || '',
+                country: publisher?.country || ''
+            };
+        }
+
+        function getBookContractOptions() {
+            return contracts.value.map(c => {
+                const publisherInfo = getPublisherInfoByContractId(c.id);
+                const hintParts = [publisherInfo.name, publisherInfo.country].filter(Boolean);
+                return {
+                    value: c.id,
+                    label: c.contract_name,
+                    hint: hintParts.join(' / ')
+                };
+            });
+        }
+
+        function applyBookContractPublisher(contractId) {
+            formData.value.contract_id = contractId;
+            const publisherInfo = getPublisherInfoByContractId(contractId);
+            formData.value.publisher_name = publisherInfo.name;
+            formData.value.publisher_country = publisherInfo.country;
         }
         
         // 计算属性
@@ -604,32 +665,11 @@ createApp({
         
         // 获取状态样式类
         function getStatusClass(status) {
-            const classMap = {
-                '待洽谈': 'pending',
-                '洽谈中': 'negotiating',
-                '已签约': 'signed',
-                '已放弃': 'abandoned',
-                '意向阶段': 'pending',
-                '合同签约阶段': 'negotiating',
-                '翻译中': 'negotiating',
-                '编辑中': 'negotiating',
-                '已出版': 'signed',
-                '近期需续约': 'warning',
-                '已过期': 'expired',
-                '已废弃': 'abandoned'
-            };
-            return classMap[status] || '';
+            return STATUS_CLASS_MAP[status] || '';
         }
         
         function getContractStatusClass(status) {
-            const classMap = {
-                '草稿': 'draft',
-                '已签约': 'signed',
-                '执行中': 'active',
-                '已到期': 'expired',
-                '已作废': 'void'
-            };
-            return classMap[status] || '';
+            return CONTRACT_STATUS_CLASS_MAP[status] || '';
         }
         
         // 数据加载
@@ -747,12 +787,7 @@ createApp({
         function updateSearchableSelectsFromData() {
             if (modalType.value === 'book') {
                 // 更新图书表单的下拉选项
-                const contractOptions = contracts.value.map(c => ({
-                    value: c.id,
-                    label: c.contract_name,
-                    hint: c.foreign_publisher_name || ''
-                }));
-                updateSearchableOptions('bookContract', contractOptions);
+                updateSearchableOptions('bookContract', getBookContractOptions());
                 
                 const translatorOptions = translators.value.map(t => ({
                     value: t.id,
@@ -798,7 +833,7 @@ createApp({
                     label: { show: false },
                     emphasis: { label: { show: true, fontSize: 13, fontWeight: 'bold' } },
                     data: data.length > 0 ? data : [{ name: '暂无数据', value: 1 }],
-                    color: data.length > 0 ? colors : ['#E2E8F0']
+                    color: data.length > 0 ? colors : CHART_PALETTES.empty
                 }]
             };
         }
@@ -815,17 +850,13 @@ createApp({
             if (!force && chartSignature === nextSignature) return;
             chartSignature = nextSignature;
 
-            const bluePalette = ['#55AFF5', '#0B6FB3', '#7BC7F8', '#F59E0B', '#16A34A', '#DC2626', '#64748B', '#8B5CF6'];
-            const contractPalette = ['#94A3B8', '#55AFF5', '#16A34A', '#F59E0B', '#DC2626'];
-            const topicPalette = ['#F59E0B', '#55AFF5', '#16A34A', '#DC2626'];
-
             bookChartInstance = ensureChart(bookChart.value, bookChartInstance);
             contractChartInstance = ensureChart(contractChart.value, contractChartInstance);
             topicChartInstance = ensureChart(topicChart.value, topicChartInstance);
 
-            if (bookChartInstance) bookChartInstance.setOption(donutOption(chartDataFrom(statistics.value.books_by_status), bluePalette));
-            if (contractChartInstance) contractChartInstance.setOption(donutOption(chartDataFrom(statistics.value.contracts_by_status), contractPalette));
-            if (topicChartInstance) topicChartInstance.setOption(donutOption(chartDataFrom(statistics.value.topic_ideas_by_status), topicPalette));
+            if (bookChartInstance) bookChartInstance.setOption(donutOption(chartDataFrom(statistics.value.books_by_status), CHART_PALETTES.books));
+            if (contractChartInstance) contractChartInstance.setOption(donutOption(chartDataFrom(statistics.value.contracts_by_status), CHART_PALETTES.contracts));
+            if (topicChartInstance) topicChartInstance.setOption(donutOption(chartDataFrom(statistics.value.topic_ideas_by_status), CHART_PALETTES.topics));
         }
 
         function resizeCharts() {
@@ -863,12 +894,7 @@ createApp({
             nextTick(() => {
                 if (type === 'book') {
                     // 图书表单：初始化合同选择和译者选择
-                    const contractOptions = contracts.value.map(c => ({
-                        value: c.id,
-                        label: c.contract_name,
-                        hint: c.foreign_publisher_name || ''
-                    }));
-                    initSearchableSelect('bookContract', contractOptions, '', '请选择合同');
+                    initSearchableSelect('bookContract', getBookContractOptions(), '', '请选择合同', applyBookContractPublisher);
                     
                     const translatorOptions = translators.value.map(t => ({
                         value: t.id,
@@ -1085,12 +1111,8 @@ createApp({
                     nextTick(() => {
                         if (type === 'book') {
                             // 图书表单：初始化合同选择和译者选择
-                            const contractOptions = contracts.value.map(c => ({
-                                value: c.id,
-                                label: c.contract_name,
-                                hint: c.foreign_publisher_name || ''
-                            }));
-                            initSearchableSelect('bookContract', contractOptions, res.data.contract_id || '', '请选择合同');
+                            initSearchableSelect('bookContract', getBookContractOptions(), res.data.contract_id || '', '请选择合同', applyBookContractPublisher);
+                            applyBookContractPublisher(res.data.contract_id);
                             
                             const translatorOptions = translators.value.map(t => ({
                                 value: t.id,
@@ -1338,6 +1360,21 @@ createApp({
         
         // 表单提交时上传文件
         async function uploadFileOnSubmit(type, recordId, fieldName, file) {
+            const endpointMap = {
+                contract: '/contracts',
+                translator: '/translators',
+                book: '/books'
+            };
+            await uploadAndAttachFile({
+                endpoint: endpointMap[type],
+                recordId,
+                fieldName,
+                file,
+                failureMessage: '文件上传失败'
+            });
+        }
+
+        async function uploadFileToServer(file, failureMessage) {
             try {
                 const formData = new FormData();
                 formData.append('file', file);
@@ -1350,110 +1387,67 @@ createApp({
                 const data = await res.json();
                 
                 if (data.success) {
-                    // 更新记录
-                    const typeMap = {
-                        contract: '/contracts',
-                        translator: '/translators',
-                        book: '/books'
-                    };
-                    await api.put(`${typeMap[type]}/${recordId}`, { [fieldName]: data.filename });
-                } else {
-                    showToastMessage(data.error || '文件上传失败', 'error');
+                    return data.filename;
                 }
+                showToastMessage(data.error || failureMessage, 'error');
             } catch (e) {
-                showToastMessage('文件上传失败: ' + e.message, 'error');
+                showToastMessage(failureMessage + ': ' + e.message, 'error');
+            }
+            return null;
+        }
+
+        async function uploadAndAttachFile({ endpoint, recordId, fieldName, file, successMessage, refresh, failureMessage = '上传失败' }) {
+            if (!endpoint || !file) return false;
+
+            const filename = await uploadFileToServer(file, failureMessage);
+            if (!filename) return false;
+
+            await api.put(`${endpoint}/${recordId}`, { [fieldName]: filename });
+            if (successMessage) showToastMessage(successMessage);
+            if (refresh) await refresh();
+            return true;
+        }
+
+        async function uploadFileFromInput(event, config) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            try {
+                await uploadAndAttachFile({ ...config, file });
+            } finally {
+                event.target.value = '';
             }
         }
         
         // 文件上传函数
         async function uploadContractFile(contractId, event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            try {
-                const formData = new FormData();
-                formData.append('file', file);
-                
-                const res = await fetch(API_BASE + '/upload', {
-                    method: 'POST',
-                    headers: { 'X-ADMIN-TOKEN': ADMIN_TOKEN },
-                    body: formData
-                });
-                const data = await res.json();
-                
-                if (data.success) {
-                    // 更新合同记录
-                    await api.put(`/contracts/${contractId}`, { contract_file: data.filename });
-                    showToastMessage('合同文件上传成功');
-                    // 刷新合同列表
-                    await loadContracts();
-                } else {
-                    showToastMessage(data.error || '上传失败', 'error');
-                }
-            } catch (e) {
-                showToastMessage('上传失败: ' + e.message, 'error');
-            }
-            event.target.value = '';
+            await uploadFileFromInput(event, {
+                endpoint: '/contracts',
+                recordId: contractId,
+                fieldName: 'contract_file',
+                successMessage: '合同文件上传成功',
+                refresh: loadContracts
+            });
         }
         
         async function uploadBookFile(bookId, event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            try {
-                const formData = new FormData();
-                formData.append('file', file);
-                
-                const res = await fetch(API_BASE + '/upload', {
-                    method: 'POST',
-                    headers: { 'X-ADMIN-TOKEN': ADMIN_TOKEN },
-                    body: formData
-                });
-                const data = await res.json();
-                
-                if (data.success) {
-                    // 更新图书记录
-                    await api.put(`/books/${bookId}`, { editor_sample_file: data.filename });
-                    showToastMessage('样书文件上传成功');
-                    // 刷新图书列表
-                    await loadBooks();
-                } else {
-                    showToastMessage(data.error || '上传失败', 'error');
-                }
-            } catch (e) {
-                showToastMessage('上传失败: ' + e.message, 'error');
-            }
-            event.target.value = '';
+            await uploadFileFromInput(event, {
+                endpoint: '/books',
+                recordId: bookId,
+                fieldName: 'editor_sample_file',
+                successMessage: '样书文件上传成功',
+                refresh: loadBooks
+            });
         }
         
         async function uploadTranslatorFile(translatorId, event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            try {
-                const formData = new FormData();
-                formData.append('file', file);
-                
-                const res = await fetch(API_BASE + '/upload', {
-                    method: 'POST',
-                    headers: { 'X-ADMIN-TOKEN': ADMIN_TOKEN },
-                    body: formData
-                });
-                const data = await res.json();
-                
-                if (data.success) {
-                    // 始终更新简历文件（用户上传意图是替换简历）
-                    await api.put(`/translators/${translatorId}`, { resume_file: data.filename });
-                    showToastMessage('简历上传成功');
-                    // 刷新译者列表
-                    await loadTranslators();
-                } else {
-                    showToastMessage(data.error || '上传失败', 'error');
-                }
-            } catch (e) {
-                showToastMessage('上传失败: ' + e.message, 'error');
-            }
-            event.target.value = '';
+            await uploadFileFromInput(event, {
+                endpoint: '/translators',
+                recordId: translatorId,
+                fieldName: 'resume_file',
+                successMessage: '简历上传成功',
+                refresh: loadTranslators
+            });
         }
         
         // 删除文件函数
@@ -1655,6 +1649,7 @@ createApp({
             deleteFile,
             getFileDownloadUrl,
             updateSearchableSelectsFromData,
+            applyBookContractPublisher,
             
             // 文件选择处理
             handleContractFileSelect,

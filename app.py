@@ -85,6 +85,25 @@ def allowed_file(filename):
     """检查文件类型是否允许"""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def fill_book_publisher_from_contract(data):
+    """Fill book publisher fields from the selected contract's publisher."""
+    if not data or not data.get('contract_id'):
+        return data
+
+    contract = get_record_by_id('contracts', data.get('contract_id'))
+    publisher_name = ''
+    publisher_country = ''
+
+    if contract and contract.get('foreign_publisher_id'):
+        publisher = get_record_by_id('foreign_publishers', contract.get('foreign_publisher_id'))
+        if publisher:
+            publisher_name = publisher.get('chinese_name') or publisher.get('original_name') or ''
+            publisher_country = publisher.get('country') or ''
+
+    data['publisher_name'] = publisher_name
+    data['publisher_country'] = publisher_country
+    return data
+
 @app.route('/')
 def index():
     """返回主页"""
@@ -358,12 +377,9 @@ def create_book():
             return jsonify({'success': False, 'error': '缺少必填字段: 原文名'})
         if 'chinese_title' not in data or not data['chinese_title']:
             return jsonify({'success': False, 'error': '缺少必填字段: 中文名'})
-        if 'publisher_name' not in data or not data['publisher_name']:
-            return jsonify({'success': False, 'error': '缺少必填字段: 出版社名称'})
-        if 'publisher_country' not in data or not data['publisher_country']:
-            return jsonify({'success': False, 'error': '缺少必填字段: 出版社国家'})
-        if 'reference_price' not in data or not data['reference_price']:
-            return jsonify({'success': False, 'error': '缺少必填字段: 参考定价'})
+
+        fill_book_publisher_from_contract(data)
+        data['reference_price'] = data.get('reference_price') or ''
         
         record_id = create_record('books', data)
         if record_id is None:
@@ -389,6 +405,10 @@ def update_book(id):
     """更新图书"""
     try:
         data = request.json
+        if data and data.get('contract_id'):
+            fill_book_publisher_from_contract(data)
+        if data and 'reference_price' in data:
+            data['reference_price'] = data.get('reference_price') or ''
         result = update_record('books', id, data)
         if result:
             return jsonify({'success': True})
