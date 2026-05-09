@@ -21,6 +21,7 @@
     --shadow-lg: 0 16px 40px rgba(7, 90, 156, 0.16);
     --radius: 8px;
     --z-header: 100;
+    --z-sidebar-overlay: 98;
     --z-sidebar: 99;
     --z-dropdown: 300;
     --z-modal: 1000;
@@ -436,12 +437,14 @@ select.form-input {
     z-index: 1000;
     opacity: 0;
     visibility: hidden;
+    pointer-events: none;
     transition: opacity 0.3s, visibility 0.3s;
 }
 
 .modal-overlay.active {
     opacity: 1;
     visibility: visible;
+    pointer-events: auto;
 }
 
 .modal {
@@ -1349,8 +1352,9 @@ select.form-input {
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.4);
-    z-index: 98;
+    z-index: var(--z-sidebar-overlay);
     opacity: 0;
+    pointer-events: none;
     transition: opacity 0.3s;
 }
 
@@ -1374,7 +1378,7 @@ select.form-input {
         left: -220px;
         top: 64px;
         height: calc(100vh - 64px);
-        z-index: 99;
+        z-index: var(--z-sidebar);
         transition: left 0.3s;
         overflow-y: auto;
     }
@@ -2214,6 +2218,15 @@ body {
         z-index: var(--z-sidebar);
     }
 
+    .sidebar-overlay {
+        z-index: var(--z-sidebar-overlay);
+        pointer-events: none;
+    }
+
+    .sidebar-overlay.active {
+        pointer-events: auto;
+    }
+
     .main-content {
         padding: 16px;
     }
@@ -2250,8 +2263,51 @@ body {
         padding: 14px;
     }
 
+    .btn,
+    .quick-action,
+    .modal-close,
+    .searchable-select-input,
+    .searchable-select-option {
+        min-height: 44px;
+    }
+
+    .modal-overlay {
+        align-items: stretch;
+        justify-content: center;
+        padding: 10px;
+    }
+
+    .modal {
+        width: 100%;
+        max-width: none;
+        max-height: calc(100dvh - 20px);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .modal-header,
+    .modal-footer {
+        flex-shrink: 0;
+    }
+
     .modal-body {
-        max-height: 62vh;
+        flex: 1 1 auto;
+        min-height: 0;
+        max-height: none;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: 16px;
+    }
+
+    .modal-footer {
+        padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+        gap: 10px;
+    }
+
+    .modal-footer .btn {
+        justify-content: center;
+        flex: 1 1 0;
     }
 }
 
