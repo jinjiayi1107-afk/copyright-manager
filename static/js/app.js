@@ -13,6 +13,10 @@ createApp({
         const globalSearchKeyword = ref('');
         const globalSearchResults = ref([]);
         const showSearchResults = ref(false);
+        const isInitialLoading = ref(true);
+        const isSearching = ref(false);
+        const isSubmitting = ref(false);
+        const deletingKey = ref('');
         
         // 模块搜索关键字
         const bookSearchKeyword = ref('');
@@ -94,6 +98,12 @@ createApp({
         const bookChart = ref(null);
         const contractChart = ref(null);
         const topicChart = ref(null);
+        let bookChartInstance = null;
+        let contractChartInstance = null;
+        let topicChartInstance = null;
+        let chartSignature = '';
+        let resizeTimer = null;
+        let enumsLoaded = false;
         
         // 可搜索下拉框状态管理
         const searchableSelects = ref({});
@@ -272,6 +282,110 @@ createApp({
                 (translator.languages && translator.languages.toLowerCase().includes(keyword))
             );
         });
+
+        const statusPriority = { urgent: 0, warning: 1, normal: 2 };
+
+        function getStatusCount(group, status) {
+            return Number((group || {})[status] || 0);
+        }
+
+        function countBy(items, predicate) {
+            return items.filter(predicate).length;
+        }
+
+        function daysUntil(dateStr) {
+            if (!dateStr) return null;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const date = new Date(dateStr);
+            if (Number.isNaN(date.getTime())) return null;
+            date.setHours(0, 0, 0, 0);
+            return Math.ceil((date - today) / 86400000);
+        }
+
+        function daysSince(dateStr) {
+            const diff = daysUntil(dateStr);
+            return diff === null ? null : -diff;
+        }
+
+        const pendingTopicCount = computed(() => getStatusCount(statistics.value.topic_ideas_by_status, '待洽谈'));
+        const negotiatingTopicCount = computed(() => getStatusCount(statistics.value.topic_ideas_by_status, '洽谈中'));
+        const activeContractCount = computed(() => getStatusCount(statistics.value.contracts_by_status, '执行中'));
+        const expiringContractCount = computed(() => Number(reminderCounts.value.contract_expiring || 0));
+        const productionBookCount = computed(() =>
+            getStatusCount(statistics.value.books_by_status, '翻译中') +
+            getStatusCount(statistics.value.books_by_status, '编辑中')
+        );
+        const renewalBookCount = computed(() =>
+            getStatusCount(statistics.value.books_by_status, '近期需续约') +
+            getStatusCount(statistics.value.books_by_status, '已过期')
+        );
+        const royaltyReminderCount = computed(() => countBy(royalties.value, royalty =>
+            royalty.payment_reminder === 1 || royalty.payment_reminder === '1' || royalty.payment_reminder === true
+        ));
+
+        const dashboardStats = computed(() => [
+            { key: 'topics', label: '意向选题', value: statistics.value.total_topic_ideas || 0, note: `待洽谈 ${pendingTopicCount.value}`, page: 'topicIdeas', icon: 'icon-topic', tone: pendingTopicCount.value ? 'warning' : 'normal' },
+            { key: 'contracts', label: '合同总数', value: statistics.value.total_contracts || 0, note: `执行中 ${activeContractCount.value}`, page: 'contracts', icon: 'icon-contract', tone: expiringContractCount.value ? 'warning' : 'normal' },
+            { key: 'books', label: '图书档案', value: statistics.value.total_books || 0, note: `制作中 ${productionBookCount.value}`, page: 'books', icon: 'icon-books', tone: renewalBookCount.value ? 'warning' : 'normal' },
+            { key: 'royalties', label: '版税记录', value: statistics.value.total_royalties || 0, note: `付款提醒 ${royaltyReminderCount.value}`, page: 'royalties', icon: 'icon-royalty', tone: royaltyReminderCount.value ? 'warning' : 'normal' },
+            { key: 'partners', label: '外商总数', value: statistics.value.total_foreign_publishers || 0, note: '版权来源库', page: 'foreignPublishers', icon: 'icon-publisher', tone: 'normal' },
+            { key: 'translators', label: '译者总数', value: statistics.value.total_translators || 0, note: '翻译资源库', page: 'translators', icon: 'icon-translator', tone: 'normal' }
+        ]);
+
+        const workflowStages = computed(() => [
+            {
+                key: 'topic',
+                title: '选题池',
+                value: statistics.value.total_topic_ideas || 0,
+                meta: `待洽谈 ${pendingTopicCount.value} / 洽谈中 ${negotiatingTopicCount.value}`,
+                page: 'topicIdeas',
+                icon: 'icon-topic',
+                tone: reminderCounts.value.topic_urgent ? 'urgent' : (pendingTopicCount.value ? 'warning' : 'normal')
+            },
+            {
+                key: 'contract',
+                title: '合同签约',
+                value: statistics.value.total_contracts || 0,
+                meta: `执行中 ${activeContractCount.value} / 到期提醒 ${expiringContractCount.value}`,
+                page: 'contracts',
+                icon: 'icon-contract',
+                tone: expiringContractCount.value ? 'warning' : 'normal'
+            },
+            {
+                key: 'book',
+                title: '图书制作',
+                value: statistics.value.total_books || 0,
+                meta: `翻译编辑 ${productionBookCount.value} / 续约 ${renewalBookCount.value}`,
+                page: 'books',
+                icon: 'icon-books',
+                tone: renewalBookCount.value ? 'warning' : 'normal'
+            },
+            {
+                key: 'royalty',
+                title: '版税跟踪',
+                value: statistics.value.total_royalties || 0,
+                meta: `付款提醒 ${royaltyReminderCount.value}`,
+                page: 'royalties',
+                icon: 'icon-royalty',
+                tone: royaltyReminderCount.value ? 'warning' : 'normal'
+            },
+            {
+                key: 'renewal',
+                title: '续约到期',
+                value: (reminderCounts.value.total || 0) + renewalBookCount.value,
+                meta: `合同 ${expiringContractCount.value} / 图书 ${renewalBookCount.value}`,
+                page: expiringContractCount.value ? 'contracts' : 'books',
+                icon: 'icon-bell',
+                tone: (reminderCounts.value.total || renewalBookCount.value) ? 'urgent' : 'normal'
+            }
+        ]);
+
+        const priorityReminders = computed(() =>
+            [...reminders.value]
+                .sort((a, b) => (statusPriority[a.priority] ?? 3) - (statusPriority[b.priority] ?? 3))
+                .slice(0, 5)
+        );
         
         // 获取合同名称
         function getContractName(contractId) {
@@ -599,9 +713,13 @@ createApp({
         }
         
         async function loadEnums() {
+            if (enumsLoaded) return;
             try {
                 const res = await api.get('/enums');
-                if (res.success) enums.value = res.data;
+                if (res.success) {
+                    enums.value = res.data;
+                    enumsLoaded = true;
+                }
             } catch (e) {
                 console.error('加载枚举值失败', e);
             }
@@ -654,82 +772,78 @@ createApp({
         }
         
         // 渲染图表
-        function renderCharts() {
-            renderBookChart();
-            renderContractChart();
-            renderTopicChart();
+        function chartDataFrom(group) {
+            return Object.keys(group || {}).map(key => ({ name: key, value: group[key] }));
         }
-        
-        function renderBookChart() {
-            const chartDom = document.getElementById('bookChart') || document.querySelector('[ref="bookChart"]');
-            if (!chartDom) return;
-            
-            const chart = echarts.init(chartDom);
-            const data = statistics.value.books_by_status || {};
-            const chartData = Object.keys(data).map(key => ({ name: key, value: data[key] }));
-            
-            chart.setOption({
+
+        function ensureChart(dom, currentChart) {
+            if (!dom) return null;
+            if (!currentChart || currentChart.getDom() !== dom) {
+                if (currentChart) currentChart.dispose();
+                return echarts.init(dom);
+            }
+            return currentChart;
+        }
+
+        function donutOption(data, colors) {
+            return {
                 tooltip: { trigger: 'item' },
-                legend: { bottom: '5%', left: 'center' },
+                legend: { bottom: 0, left: 'center', itemWidth: 10, itemHeight: 10, textStyle: { color: '#475569' } },
                 series: [{
                     type: 'pie',
-                    radius: ['40%', '70%'],
-                    avoidLabelOverlap: false,
-                    itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
+                    radius: ['48%', '72%'],
+                    center: ['50%', '44%'],
+                    avoidLabelOverlap: true,
+                    itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
                     label: { show: false },
-                    emphasis: { label: { show: true, fontSize: 14, fontWeight: 'bold' } },
-                    data: chartData.length > 0 ? chartData : [{ name: '暂无数据', value: 1 }],
-                    color: ['#1890ff', '#52c41a', '#faad14', '#f5222d', '#722ed1', '#13c2c2', '#eb2f96', '#000000']
+                    emphasis: { label: { show: true, fontSize: 13, fontWeight: 'bold' } },
+                    data: data.length > 0 ? data : [{ name: '暂无数据', value: 1 }],
+                    color: data.length > 0 ? colors : ['#E2E8F0']
                 }]
-            });
+            };
         }
-        
-        function renderContractChart() {
-            const chartDom = document.getElementById('contractChart') || document.querySelector('[ref="contractChart"]');
-            if (!chartDom) return;
-            
-            const chart = echarts.init(chartDom);
-            const data = statistics.value.contracts_by_status || {};
-            const chartData = Object.keys(data).map(key => ({ name: key, value: data[key] }));
-            
-            chart.setOption({
-                tooltip: { trigger: 'item' },
-                legend: { bottom: '5%', left: 'center' },
-                series: [{
-                    type: 'pie',
-                    radius: ['40%', '70%'],
-                    avoidLabelOverlap: false,
-                    itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
-                    label: { show: false },
-                    emphasis: { label: { show: true, fontSize: 14, fontWeight: 'bold' } },
-                    data: chartData.length > 0 ? chartData : [{ name: '暂无数据', value: 1 }],
-                    color: ['#d9d9d9', '#1890ff', '#52c41a', '#faad14', '#f5222d']
-                }]
+
+        function renderCharts(force = false) {
+            if (currentPage.value !== 'dashboard') return;
+            if (!bookChart.value && !contractChart.value && !topicChart.value) return;
+
+            const nextSignature = JSON.stringify({
+                books: statistics.value.books_by_status,
+                contracts: statistics.value.contracts_by_status,
+                topics: statistics.value.topic_ideas_by_status
             });
+            if (!force && chartSignature === nextSignature) return;
+            chartSignature = nextSignature;
+
+            const bluePalette = ['#55AFF5', '#0B6FB3', '#7BC7F8', '#F59E0B', '#16A34A', '#DC2626', '#64748B', '#8B5CF6'];
+            const contractPalette = ['#94A3B8', '#55AFF5', '#16A34A', '#F59E0B', '#DC2626'];
+            const topicPalette = ['#F59E0B', '#55AFF5', '#16A34A', '#DC2626'];
+
+            bookChartInstance = ensureChart(bookChart.value, bookChartInstance);
+            contractChartInstance = ensureChart(contractChart.value, contractChartInstance);
+            topicChartInstance = ensureChart(topicChart.value, topicChartInstance);
+
+            if (bookChartInstance) bookChartInstance.setOption(donutOption(chartDataFrom(statistics.value.books_by_status), bluePalette));
+            if (contractChartInstance) contractChartInstance.setOption(donutOption(chartDataFrom(statistics.value.contracts_by_status), contractPalette));
+            if (topicChartInstance) topicChartInstance.setOption(donutOption(chartDataFrom(statistics.value.topic_ideas_by_status), topicPalette));
         }
-        
-        function renderTopicChart() {
-            const chartDom = topicChart.value;
-            if (!chartDom) return;
-            
-            const chart = echarts.init(chartDom);
-            const data = statistics.value.topic_ideas_by_status || {};
-            const chartData = Object.keys(data).map(key => ({ name: key, value: data[key] }));
-            
-            chart.setOption({
-                tooltip: { trigger: 'item' },
-                legend: { bottom: '5%', left: 'center' },
-                series: [{
-                    type: 'pie',
-                    radius: ['40%', '70%'],
-                    avoidLabelOverlap: false,
-                    itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
-                    label: { show: false },
-                    emphasis: { label: { show: true, fontSize: 14, fontWeight: 'bold' } },
-                    data: chartData.length > 0 ? chartData : [{ name: '暂无数据', value: 1 }],
-                    color: ['#faad14', '#1890ff', '#52c41a', '#f5222d']
-                }]
+
+        function resizeCharts() {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                [bookChartInstance, contractChartInstance, topicChartInstance].forEach(chart => {
+                    if (chart) chart.resize();
+                });
+            }, 120);
+        }
+
+        function disposeCharts() {
+            [bookChartInstance, contractChartInstance, topicChartInstance].forEach(chart => {
+                if (chart) chart.dispose();
             });
+            bookChartInstance = null;
+            contractChartInstance = null;
+            topicChartInstance = null;
         }
         
         // 模态框操作
@@ -844,8 +958,52 @@ createApp({
         function serializeTieredRoyalty() {
             return JSON.stringify(tieredTiers.value);
         }
+
+        function getDeletionKey(table, id) {
+            return `${table}:${id}`;
+        }
+
+        function isDeleting(table, id) {
+            return deletingKey.value === getDeletionKey(table, id);
+        }
+
+        function tableToModalType(table) {
+            const map = {
+                books: 'book',
+                contracts: 'contract',
+                foreign_publishers: 'foreignPublisher',
+                translators: 'translator',
+                topic_ideas: 'topicIdea',
+                royalties: 'royalty'
+            };
+            return map[table] || table;
+        }
+
+        async function refreshDashboardMetrics() {
+            await Promise.all([loadStatistics(), loadReminders()]);
+        }
+
+        async function refreshAfterMutation(type) {
+            const loaders = {
+                book: loadBooks,
+                contract: loadContracts,
+                foreignPublisher: loadForeignPublishers,
+                translator: loadTranslators,
+                topicIdea: loadTopicIdeas,
+                royalty: loadRoyalties
+            };
+            const loader = loaders[type];
+            await Promise.all([
+                loader ? loader() : Promise.resolve(),
+                refreshDashboardMetrics()
+            ]);
+            updateSearchableSelectsFromData();
+        }
         
         async function submitForm() {
+            if (isSubmitting.value) return;
+            isSubmitting.value = true;
+            const submittedType = modalType.value;
             try {
                 let res;
                 const typeMap = {
@@ -888,12 +1046,14 @@ createApp({
                     
                     showToastMessage(editingId.value ? '修改成功' : '添加成功');
                     closeModal();
-                    loadAllData();
+                    await refreshAfterMutation(submittedType);
                 } else {
                     showToastMessage(res.error || '操作失败', 'error');
                 }
             } catch (e) {
                 showToastMessage('操作失败: ' + e.message, 'error');
+            } finally {
+                isSubmitting.value = false;
             }
         }
         
@@ -979,6 +1139,7 @@ createApp({
         
         async function deleteRecord(table, id) {
             if (!confirm('确定要删除这条记录吗？')) return;
+            if (isDeleting(table, id)) return;
             
             // 表名到API路径的映射（统一用横杠）
             const endpointMap = {
@@ -986,17 +1147,20 @@ createApp({
                 'topic_ideas': 'topic-ideas'
             };
             const endpoint = endpointMap[table] || table;
+            deletingKey.value = getDeletionKey(table, id);
             
             try {
                 const res = await api.delete(`/${endpoint}/${id}`);
                 if (res.success) {
                     showToastMessage('删除成功');
-                    loadAllData();
+                    await refreshAfterMutation(tableToModalType(table));
                 } else {
                     showToastMessage(res.error || '删除失败', 'error');
                 }
             } catch (e) {
                 showToastMessage('删除失败', 'error');
+            } finally {
+                deletingKey.value = '';
             }
         }
         
@@ -1042,6 +1206,54 @@ createApp({
         function toggleSidebar() {
             sidebarOpen.value = !sidebarOpen.value;
         }
+
+        function goToPage(page) {
+            currentPage.value = page;
+            sidebarOpen.value = false;
+        }
+
+        function getReminderIconId(reminder) {
+            if (reminder.type === 'contract_expiring') return 'icon-contract';
+            if (reminder.type === 'topic_urgent') return 'icon-warning';
+            return 'icon-clock';
+        }
+
+        function getRecordDetailTitle(type) {
+            const titleMap = {
+                books: '图书档案详情',
+                contracts: '合同详情',
+                foreignPublishers: '外商详情',
+                translators: '译者详情',
+                topicIdeas: '意向选题详情',
+                royalties: '版税详情'
+            };
+            return titleMap[type] || '详情信息';
+        }
+
+        function getRecordRiskClass(type, record) {
+            if (!record) return '';
+            if (type === 'book') {
+                if (record.book_status === '已过期' || record.book_status === '已废弃') return 'row-risk-danger';
+                if (record.book_status === '近期需续约') return 'row-risk-warning';
+                if (record.book_status === '翻译中' || record.book_status === '编辑中') return 'row-risk-active';
+            }
+            if (type === 'contract') {
+                if (record.contract_status === '已到期' || record.contract_status === '已作废') return 'row-risk-danger';
+                const left = daysUntil(record.end_date);
+                if (record.contract_status === '执行中' && left !== null && left >= 0 && left <= 30) return 'row-risk-warning';
+                if (record.contract_status === '执行中') return 'row-risk-active';
+            }
+            if (type === 'topicIdea') {
+                const passed = daysSince(record.intention_date);
+                if (record.intention_status === '待洽谈' && passed !== null && passed >= 90) return 'row-risk-danger';
+                if (record.intention_status === '待洽谈' && passed !== null && passed >= 30) return 'row-risk-warning';
+                if (record.intention_status === '洽谈中') return 'row-risk-active';
+            }
+            if (type === 'royalty' && (record.payment_reminder === 1 || record.payment_reminder === '1' || record.payment_reminder === true)) {
+                return 'row-risk-warning';
+            }
+            return '';
+        }
         
         // 全局搜索处理
         let searchTimeout = null;
@@ -1049,16 +1261,21 @@ createApp({
             clearTimeout(searchTimeout);
             if (!globalSearchKeyword.value.trim()) {
                 globalSearchResults.value = [];
+                isSearching.value = false;
                 return;
             }
+            isSearching.value = true;
             searchTimeout = setTimeout(async () => {
+                const keyword = globalSearchKeyword.value.trim();
                 try {
-                    const res = await api.get('/global-search?keyword=' + encodeURIComponent(globalSearchKeyword.value));
+                    const res = await api.get('/global-search?keyword=' + encodeURIComponent(keyword));
                     if (res.success) {
                         globalSearchResults.value = res.data;
                     }
                 } catch (e) {
                     console.error('搜索失败', e);
+                } finally {
+                    isSearching.value = false;
                 }
             }, 300);
         }
@@ -1066,7 +1283,15 @@ createApp({
         // 跳转到搜索结果
         function navigateToResult(result) {
             showSearchResults.value = false;
-            currentPage.value = result.type;
+            const pageMap = {
+                book: 'books',
+                contract: 'contracts',
+                foreignPublisher: 'foreignPublishers',
+                translator: 'translators',
+                topicIdea: 'topicIdeas',
+                royalty: 'royalties'
+            };
+            currentPage.value = pageMap[result.type] || result.type;
             nextTick(() => {
                 viewDetail(result.type, result.id);
             });
@@ -1288,23 +1513,34 @@ createApp({
         watch(currentPage, () => {
             nextTick(() => {
                 if (currentPage.value === 'dashboard') {
-                    renderCharts();
+                    renderCharts(true);
                 }
             });
         });
         
         // 初始化
         onMounted(async () => {
-            // 初始化数据库
-            await api.post('/init', {});
-            // 加载所有数据
-            await loadAllData();
+            isInitialLoading.value = true;
+            try {
+                // 初始化数据库
+                await api.post('/init', {});
+                // 加载所有数据
+                await loadAllData();
+            } finally {
+                isInitialLoading.value = false;
+                await nextTick();
+                renderCharts(true);
+            }
             // 添加点击空白处关闭搜索结果的事件监听
             document.addEventListener('click', handleClickOutside);
+            window.addEventListener('resize', resizeCharts);
         });
         
         onUnmounted(() => {
             document.removeEventListener('click', handleClickOutside);
+            window.removeEventListener('resize', resizeCharts);
+            clearTimeout(resizeTimer);
+            disposeCharts();
         });
         
         return {
@@ -1313,6 +1549,9 @@ createApp({
             globalSearchKeyword,
             globalSearchResults,
             showSearchResults,
+            isInitialLoading,
+            isSearching,
+            isSubmitting,
             bookSearchKeyword,
             contractSearchKeyword,
             publisherSearchKeyword,
@@ -1382,6 +1621,9 @@ createApp({
             filteredPublishers,
             filteredTranslators,
             filteredTranslatorsForSelect,
+            dashboardStats,
+            workflowStages,
+            priorityReminders,
             getContractName,
             
             // 方法
@@ -1389,9 +1631,14 @@ createApp({
             formatId,
             formatDateTime,
             getRecordType,
+            getRecordDetailTitle,
             formatFieldName,
             getStatusClass,
             getContractStatusClass,
+            getRecordRiskClass,
+            getReminderIconId,
+            goToPage,
+            isDeleting,
             openModal,
             closeModal,
             submitForm,
